@@ -99,7 +99,7 @@ void App_Init (void)
 
 
 	DMAMUX_Init();
-	DMAMUX_SetSource(0,PORTA);
+	DMAMUX_SetSource(0,AlwaysEnabled0);
 	DMAMUX_EnableChannel(0);
 
 
@@ -108,7 +108,7 @@ void App_Init (void)
 	DMA_Init(&DMAconfig);
 
 	uint8_t srcARR[] = {1,2,3,4,5};
-	uint8_t destARR[] = {1,2,3,4,5};
+	uint8_t destARR[5];
 
 	DMA_TransferConfig DMATransfer;
 	DMATransfer.sourceAddress = (uint32_t)srcARR;
@@ -121,12 +121,13 @@ void App_Init (void)
 	DMATransfer.minorLoopBytes = 1;
 
 	DMA_SetTransferConfig(0,&DMATransfer);
+	DMA_EnableChannelRequest (0);
 
 	PIT_Config PITConfig;
 	PIT_GetDefaultConfig(&PITConfig);
 	PIT_Init(&PITConfig);
-	PIT_SetTimerPeriod (PIT_CHNL_0, 0xFFFFFF);
-	PIT_TimerIntrruptEnable(PIT_CHNL_0, true);
+	PIT_SetTimerPeriod (PIT_CHNL_0, 0xFFFFFFFF);
+	PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
 	PIT_TimerEnable(PIT_CHNL_0, true);
 
 
@@ -180,10 +181,13 @@ void App_Init (void)
 
 }
 
-
+void DMA0_IRQHandler(void)
+{
+	int i =0;
+}
 void App_Run (void)
 {
-	PDB_Trigger();
+	//PDB_Trigger();
 	while(1);
 	//DAC_TriggerBuffer(DAC_0);
 	//uint16_t n= 0x00F;
