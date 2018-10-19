@@ -25,7 +25,7 @@
 #define SYSTICK_MAX_CALLBACKS 10
 #define MS2S (1/1000.0)
 #define US2S (1/1000000.0)
-#define SYSTICK_ISR_PERIOD_S (30*US2S)
+#define SYSTICK_ISR_PERIOD_S (100*US2S)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                    Enumerations, structures and typedefs                    //

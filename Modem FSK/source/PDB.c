@@ -95,7 +95,7 @@ void PDB_SetCounterDelayValue(uint32_t value)
 	PDB0->IDLY = PDB_IDLY_IDLY(value);
 }
 
-void PDB_SetDacTrigger(uint16_t value)
+void PDB_SetDacTriggerPeriod(uint16_t value)
 {
 	// Disable external trigger
 	PDB0->DAC[0].INTC &= ~PDB_INTC_EXT(0);
