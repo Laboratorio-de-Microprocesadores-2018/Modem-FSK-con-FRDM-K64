@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 /////////////////////////////////////////////////////////////////////////////////
 //                     				MODEM FSK                              	   //
 //          Grupo 3 - Laboratorio de Microprocesadores - ITBA - 2018           //
@@ -214,4 +212,3 @@ void App_Run (void)
 
 }
 
->>>>>>> branch 'master' of https://github.com/tlifschitz/Modem-FSK-con-FRDM-K64.git
