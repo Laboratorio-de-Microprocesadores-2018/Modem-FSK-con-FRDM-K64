@@ -30,6 +30,8 @@ void PIT_GetDefaultConfig(PIT_Config * config);
 */
 void PIT_Init(PIT_Config * config);
 
+
+void PIT_Enable();
 /**
 	@brief
 */

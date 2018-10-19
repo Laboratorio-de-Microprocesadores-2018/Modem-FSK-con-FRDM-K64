@@ -47,18 +47,22 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 void DMA_EnableInterrupts (uint32_t channel)
 {
 	ASSERT(channel<FSL_FEATURE_EDMA_MODULE_CHANNEL);
+	DMA0->TCD[channel].CSR|=DMA_CSR_INTMAJOR_MASK;
 	NVIC_EnableIRQ(irqTable[channel]);
 }
 
 void DMA_DisableInterrupts (uint32_t channel)
 {
 	ASSERT(channel<FSL_FEATURE_EDMA_MODULE_CHANNEL);
+	DMA0->TCD[channel].CSR&=~DMA_CSR_INTMAJOR_MASK;
 	NVIC_DisableIRQ(irqTable[channel]);
 }
 
 void DMA_TriggerChannelStart (uint32_t channel)
 {
 	ASSERT(channel<FSL_FEATURE_EDMA_MODULE_CHANNEL);
+	DMA0->TCD[channel].CSR|=DMA_CSR_START_MASK;
+
 }
 
 void DMA_EnableChannelRequest (uint32_t channel)

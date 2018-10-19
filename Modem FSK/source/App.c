@@ -90,6 +90,9 @@ void DAC0_IRQHandler()
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
 
+uint8_t srcARR[] = {1,2,3,4,5};
+uint8_t destARR[5]={0,0,0,0,0};
+
 
 void App_Init (void)
 {
@@ -99,16 +102,15 @@ void App_Init (void)
 
 
 	DMAMUX_Init();
-	DMAMUX_SetSource(0,AlwaysEnabled0);
-	DMAMUX_EnableChannel(0);
+	DMAMUX_SetSource(1,DMAMUX_AlwaysEnabled3);
+	DMAMUX_EnableChannel(1,true);
 
 
 	DMA_Config DMAconfig;
 	DMA_GetDefaultConfig(&DMAconfig);
 	DMA_Init(&DMAconfig);
 
-	uint8_t srcARR[] = {1,2,3,4,5};
-	uint8_t destARR[5];
+
 
 	DMA_TransferConfig DMATransfer;
 	DMATransfer.sourceAddress = (uint32_t)srcARR;
@@ -120,15 +122,16 @@ void App_Init (void)
 	DMATransfer.majorLoopCounts = 5;
 	DMATransfer.minorLoopBytes = 1;
 
-	DMA_SetTransferConfig(0,&DMATransfer);
-	DMA_EnableChannelRequest (0);
-
+	DMA_SetTransferConfig(1,&DMATransfer);
+	DMA_EnableChannelRequest (1);
+	DMA_EnableInterrupts(1);
 	PIT_Config PITConfig;
 	PIT_GetDefaultConfig(&PITConfig);
 	PIT_Init(&PITConfig);
-	PIT_SetTimerPeriod (PIT_CHNL_0, 0xFFFFFFFF);
+	PIT_Enable();
+	PIT_SetTimerPeriod (PIT_CHNL_1, 0xFFFFFF);
 	PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
-	PIT_TimerEnable(PIT_CHNL_0, true);
+	PIT_TimerEnable(PIT_CHNL_1, true);
 
 
 	/*
@@ -184,11 +187,17 @@ void App_Init (void)
 void DMA0_IRQHandler(void)
 {
 	int i =0;
+	i++;
 }
 void App_Run (void)
 {
 	//PDB_Trigger();
-	while(1);
+	while(1)
+	{
+		//DMA_TriggerChannelStart(0);
+	}
+
+
 	//DAC_TriggerBuffer(DAC_0);
 	//uint16_t n= 0x00F;
 	//while(n--);
