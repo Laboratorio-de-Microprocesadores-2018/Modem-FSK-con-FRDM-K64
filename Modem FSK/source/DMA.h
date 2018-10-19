@@ -127,6 +127,8 @@ typedef struct
 } DMA_Handle;
 
 
+void DMA_GetDefaultConfig(DMA_Config * config);
+
 /*!
  * @brief Initializes DMA module
  *

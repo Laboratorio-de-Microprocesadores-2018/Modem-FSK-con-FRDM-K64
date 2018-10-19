@@ -5,6 +5,15 @@
 
 static int irqTable[]=DMA_CHN_IRQS;
 
+void DMA_GetDefaultConfig(DMA_Config * config)
+{
+	config->enableContinuousLinkMode=false;
+	config->enableDebugMode = false;
+	config->enableHaltOnError = false;
+	config->enableRoundRobinArbitration = false;
+}
+
+
 void DMA_Init(DMA_Config *config)
 {
 	SIM->SCGC7 |= SIM_SCGC7_DMA_MASK;
