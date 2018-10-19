@@ -10,7 +10,7 @@
 
 
 #include <stdbool.h>
-
+#include "stdint.h"
 // Los que tienen * son los que se pueden acceder en el header
 /*
 
@@ -56,14 +56,43 @@ typedef enum{FTM_PRESCALE_1,
 			FTM_PRESCALE_16,
 			FTM_PRESCALE_32,
 			FTM_PRESCALE_64,
-			FTM_PRESCALE_128}FTM_PRESCALE;
+			FTM_PRESCALE_128
+}FTM_Prescale;
+
+typedef enum{
+	FTM_PWM_CENTER_ALIGNED,
+	FTM_PWM_EDGE_ALIGNED,
+	FTM_PWM_COMBINED
+}FTM_PWMMode;
+
+typedef enum{
+	FTM_CHNL_0,
+	FTM_CHNL_1,
+	FTM_CHNL_2,
+	FTM_CHNL_3,
+	FTM_CHNL_4,
+	FTM_CHNL_5,
+	FTM_CHNL_6,
+	FTM_CHNL_7
+}FTM_Channel;
+
+
+
+
 
 typedef struct{
-	FTM_PRESCALE prescale;
+	FTM_Prescale prescale;
 	FTM_ClockSource clockSource;
 }FTM_Config;
 
+typedef struct{
+	FTM_Channel channel;
+	FTM_PWMMode mode;
+	bool enableDMA;
+	uint32_t PWMFreq;
+}FTM_PwmConfig;
 
 void FTM_GetDefaultConfig(FTM_Config * config);
 void FTM_Init(FTM_Instance instance, FTM_Config * config);
+bool FTM_SetupPwm(FTM_Instance 	instance,FTM_PwmConfig * config);
 #endif /* FTM_H_ */
