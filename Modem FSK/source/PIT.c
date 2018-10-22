@@ -33,8 +33,8 @@ void PIT_Enable()
 void PIT_SetTimerPeriod (PIT_Channel n, uint32_t count)
 {
 	ASSERT(n<FSL_FEATURE_PIT_TIMER_COUNT);
-
-	PIT->CHANNEL[n].LDVAL = count;
+	ASSERT(count>1);
+	PIT->CHANNEL[n].LDVAL = count-1;
 }
  
 uint32_t PIT_GetTimerCount (PIT_Channel n)
@@ -73,7 +73,7 @@ void PIT_TimerIntrruptEnable(PIT_Channel n, bool enable)
 {
 	ASSERT(n<FSL_FEATURE_PIT_TIMER_COUNT);
 
-	static IRQn_Type irqNums[]=PIT_IRQS;
+	static IRQn_Type irqNums[]={ PIT0_IRQn, PIT1_IRQn, PIT2_IRQn, PIT3_IRQn };
 	if(enable)
 	{
 		NVIC_EnableIRQ(irqNums[n]);

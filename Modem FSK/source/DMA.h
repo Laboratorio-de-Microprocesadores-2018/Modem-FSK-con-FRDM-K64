@@ -145,7 +145,6 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config);
 
 void DMA_EnableInterrupts (uint32_t channel);
 
-
 void DMA_DisableInterrupts (uint32_t channel);
 
 void DMA_TriggerChannelStart (uint32_t channel);
