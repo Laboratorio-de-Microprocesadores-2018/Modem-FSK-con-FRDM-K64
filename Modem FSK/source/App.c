@@ -12,23 +12,30 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
-//#include "DAC.h"
-//#include "PDB.h"
+#include "Modem.h"
+
+////
 #include "math.h"
 #include "SysTick.h"
 #include "GPIO.h"
 #include "DMAMUX.h"
 #include "DMA.h"
 #include "PIT.h"
+
+#define SINE_FREQ (1100)
+#define N_SAMPLE (64)
+
+
+static uint16_t signal[N_SAMPLE];
+
+///
+
+
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define SINE_FREQ (1100)
-#define N_SAMPLE (256)
 
-#define DAC_BUFFER_SIZE (1)
-#define DAC_WATERMARK (2)
 /////////////////////////////////////////////////////////////////////////////////
 //                    Enumerations, structures and typedefs                    //
 /////////////////////////////////////////////////////////////////////////////////
@@ -41,11 +48,14 @@
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-static uint16_t signal[N_SAMPLE];
-
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
 /////////////////////////////////////////////////////////////////////////////////
+
+void PIT1_IRQHandler()
+{
+
+}
 
 void DAC0_IRQHandler()
 {
@@ -93,32 +103,33 @@ void DAC0_IRQHandler()
 
 void App_Init (void)
 {
+	MODEM_Init();
 	// Fill table with samples
 	for(int i=0; i<N_SAMPLE; i++)
 		signal[i]=sin((float)i/N_SAMPLE*2*M_PI)*2048+2047;
 
-
+	// DMA0 AlwaysEnabled
 	DMAMUX_Init();
 	DMAMUX_SetSource(0,AlwaysEnabled0);
 	DMAMUX_EnableChannel(0);
-
 
 	DMA_Config DMAconfig;
 	DMA_GetDefaultConfig(&DMAconfig);
 	DMA_Init(&DMAconfig);
 
-	uint8_t srcARR[] = {1,2,3,4,5};
-	uint8_t destARR[5];
+	uint16_t srcARR[] = {300,301,302,303,304};
+	uint16_t destARR;
 
 	DMA_TransferConfig DMATransfer;
 	DMATransfer.sourceAddress = (uint32_t)srcARR;
 	DMATransfer.destinationAddress = (uint32_t)destARR;
-	DMATransfer.destinationOffset = 1;
-	DMATransfer.sourceOffset = 1;
-	DMATransfer.destinationTransferSize = DMA_TransferSize1Bytes;
-	DMATransfer.sourceTransferSize = DMA_TransferSize1Bytes;
+	DMATransfer.destinationOffset = 0;
+	DMATransfer.sourceOffset = 2;
+	DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
 	DMATransfer.majorLoopCounts = 5;
-	DMATransfer.minorLoopBytes = 1;
+	DMATransfer.minorLoopBytes = 2;
+	DMATransfer.majorLoopAdjust = -1*sizeof(srcARR)/sizeof(srcARR[0]);
 
 	DMA_SetTransferConfig(0,&DMATransfer);
 	DMA_EnableChannelRequest (0);
@@ -129,7 +140,6 @@ void App_Init (void)
 	PIT_SetTimerPeriod (PIT_CHNL_0, 0xFFFFFFFF);
 	PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
 	PIT_TimerEnable(PIT_CHNL_0, true);
-
 
 	/*
 	// Configure PDB module
@@ -181,10 +191,6 @@ void App_Init (void)
 
 }
 
-void DMA0_IRQHandler(void)
-{
-	int i =0;
-}
 void App_Run (void)
 {
 	//PDB_Trigger();
