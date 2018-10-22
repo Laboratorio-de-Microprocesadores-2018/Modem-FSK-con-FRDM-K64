@@ -1,6 +1,7 @@
 #include "PIT.h"
 #include "MK64F12.h"
 #include "MK64F12_features.h"
+#include "hardware.h"
 #include "Assert.h"
 #include "stdlib.h"
 
@@ -25,6 +26,10 @@ void PIT_Init(PIT_Config * config)
 		PIT->MCR |= PIT_MCR_FRZ_MASK;
 }
 
+void PIT_Enable()
+{
+	PIT->MCR &= ~PIT_MCR_MDIS_MASK;
+}
 void PIT_SetTimerPeriod (PIT_Channel n, uint32_t count)
 {
 	ASSERT(n<FSL_FEATURE_PIT_TIMER_COUNT);
@@ -68,13 +73,18 @@ void PIT_TimerIntrruptEnable(PIT_Channel n, bool enable)
 {
 	ASSERT(n<FSL_FEATURE_PIT_TIMER_COUNT);
 
+	static IRQn_Type irqNums[]=PIT_IRQS;
 	if(enable)
 	{
+		NVIC_EnableIRQ(irqNums[n]);
 		PIT->CHANNEL[n].TFLG = 1;
 		PIT->CHANNEL[n].TCTRL |= PIT_TCTRL_TIE_MASK;
 	}
 	else
+	{
+		NVIC_DisableIRQ(irqNums[n]);
 		PIT->CHANNEL[n].TCTRL &= ~PIT_TCTRL_TIE_MASK;
+	}
 }
 
 
@@ -90,9 +100,9 @@ void PIT_ChainMode(PIT_Channel n,bool enable)
 
 void PIT0_IRQHandler(void)
 {
-	ASSERT(PIT_Callbacks[0] != NULL);
+	//ASSERT(PIT_Callbacks[0] != NULL);
 
-	PIT_Callbacks[0](PIT_CallbackData[0]);
+	//PIT_Callbacks[0](PIT_CallbackData[0]);
 	PIT->CHANNEL[0].TFLG = 1;
 }
 void PIT1_IRQHandler(void)
