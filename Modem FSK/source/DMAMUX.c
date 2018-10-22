@@ -25,5 +25,5 @@ void DMAMUX_DisableChannel (uint32_t channel)
 }
 void DMAMUX_SetSource ( uint32_t channel, uint8_t source)
 {
-	DMAMUX->CHCFG[channel]=DMAMUX_CHCFG_SOURCE(source);
+	DMAMUX->CHCFG[channel]|=DMAMUX_CHCFG_SOURCE(source);
 }

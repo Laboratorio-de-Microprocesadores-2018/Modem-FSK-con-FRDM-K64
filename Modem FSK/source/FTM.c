@@ -67,14 +67,26 @@ bool FTM_SetupPwm(FTM_Instance 	instance, FTM_PwmConfig * config)
 
 		// CPWMS = 0 (Centered PWM)
 		FTMs[instance]->SC &= ~FTM_SC_CPWMS_MASK;
-
-		// MSnB = 1
+/*
+		// MSnB = 1//esta bien esto? parece que hace otra cosa
 		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_ELSB_MASK;
+*/
+		/*------------------yo pondria-------------------------------------------*/
+		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_MSB_MASK | FTM_CnSC_ELSB_MASK;
+		/*-----------------------------------------------------------------------*/
 
 		uint8_t PS = (FTMs[instance]->SC>> FTM_SC_PS_SHIFT)&FTM_SC_PS_MASK;
+/*		Es con 1 en lugar de 2, no? */
+//		uint16_t MOD = 50000000/(config->PWMFreq*(2<<PS))-1;
+		/*---------------cambio-----------------------------------------*/
+		uint16_t MOD = ( 50000000 / (config->PWMFreq*(1<<PS)) )-1;
+		FTMs[instance]->MOD=MOD;
+		//FTM->MOD = MOD;
+		/*---------------------------------------------------------------*/
+		uint16_t CnV= (uint16_t)((MOD+1)*(config->dutyCyclePercent/100.0) );
+		FTMs[instance]->CONTROLS[config->channel].CnV=CnV;
 
-		uint16_t MOD = 50000000/(config->PWMFreq*(2<<PS))-1;
-
+		return true; //cambiar
 		// HACER CUENTAS
 		//CnV = 65536/2;
 		// Width = CnV − CNTIN

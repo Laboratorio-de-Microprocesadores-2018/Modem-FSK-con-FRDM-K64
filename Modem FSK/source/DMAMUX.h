@@ -1,3 +1,5 @@
+#ifndef DMAMUX_H_
+#define DMAMUX_H_
 
 
 typedef enum{
@@ -72,5 +74,6 @@ void DMAMUX_EnableChannel ( uint32_t channel, bool periodicTrigger);
 void DMAMUX_DisableChannel (uint32_t channel);
 void DMAMUX_SetSource ( uint32_t channel, DMAMUX_Source source);
 
+#endif /* DMAMUX_H_ */
 
 
