@@ -102,6 +102,11 @@ void DAC_EnableBufferDMA (DAC_Instance n, bool enable);
 /**
  *
  */
+uint32_t DAC_GetBufferAddress(DAC_Instance n);
+
+/**
+ *
+ */
 void DAC_TriggerBuffer (DAC_Instance n);
 
 /**
