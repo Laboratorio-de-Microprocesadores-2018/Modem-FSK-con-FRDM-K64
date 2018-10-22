@@ -42,6 +42,7 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 	DMA0->TCD[channel].SOFF = config->sourceOffset;
 	DMA0->TCD[channel].BITER_ELINKNO = DMA_BITER_ELINKNO_BITER(config->majorLoopCounts);
 	DMA0->TCD[channel].NBYTES_MLNO = config->minorLoopBytes;
+	DMA0->TCD[channel].SLAST = config->majorLoopAdjust;
 }
 
 void DMA_EnableInterrupts (uint32_t channel)
