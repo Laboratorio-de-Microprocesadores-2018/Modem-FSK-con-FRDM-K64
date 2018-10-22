@@ -13,6 +13,7 @@
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
 #include "DAC.h"
+#include "ADC.h"
 #include "math.h"
 #include "SysTick.h"
 #include "FTM.h"
@@ -49,19 +50,20 @@ static void updateDAC();
 
 void App_Init (void)
 {
-	/*DAC_Init(DAC_VREF_2);
+	DAC_Init(DAC_VREF_2);
 
 	for(int i=0; i<N_SAMPLE; i++)
 		signal[i]=sin((float)i/N_SAMPLE*2*M_PI)*2048+2047;
 
 
 	sysTickInit();
-	sysTickAddCallback(&updateDAC,1/(float)(N_SAMPLE*SINE_FREQ));*/
-	FTM_Config config;
-	config.clockSource = FTM_SYSTEM_CLOCK;
-	config.prescale = FTM_PRESCALE_4;
-	FTM_Init(FTM_0,&config);
-	FTM_EnableOverflowInterrupt(FTM_0);
+	sysTickAddCallback(&updateDAC,1/(float)(N_SAMPLE*SINE_FREQ));
+	ADC_Init();
+	//FTM_Config config;
+	//config.clockSource = FTM_SYSTEM_CLOCK;
+	//config.prescale = FTM_PRESCALE_4;
+	//FTM_Init(FTM_0,&config);
+	//FTM_EnableOverflowInterrupt(FTM_0);
 }
 
 
