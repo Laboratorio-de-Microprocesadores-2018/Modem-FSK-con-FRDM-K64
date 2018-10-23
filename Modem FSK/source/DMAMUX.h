@@ -1,6 +1,7 @@
 #ifndef DMAMUX_H_
 #define DMAMUX_H_
-
+#include "stdint.h"
+#include "stdbool.h"
 
 typedef enum{
 	DMAMUX_UART0_RX,

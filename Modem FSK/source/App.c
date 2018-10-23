@@ -12,26 +12,20 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
-//#include "DAC.h"
-//#include "PDB.h"
-#include "math.h"
-#include "SysTick.h"
+#include "Modem.h"
 #include "GPIO.h"
 #include "DMAMUX.h"
+#include "hardware.h"//SACA LA MANO DE AHI APP.C!!!!
 #include "FTM.h"
 #include "DMA.h"
 #include "PIT.h"
-#include "hardware.h"
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define SINE_FREQ (1100)
-#define N_SAMPLE (256)
 
-#define DAC_BUFFER_SIZE (1)
-#define DAC_WATERMARK (2)
 /////////////////////////////////////////////////////////////////////////////////
 //                    Enumerations, structures and typedefs                    //
 /////////////////////////////////////////////////////////////////////////////////
@@ -44,17 +38,16 @@
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-static uint16_t signal[N_SAMPLE];
-
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
 /////////////////////////////////////////////////////////////////////////////////
+
 
 void DAC0_IRQHandler()
 {
 	//digitalToggle(PORTNUM2PIN(PC,10));
 
-	static uint8_t index = 0;
+	//static uint8_t index = 0;
 
 	//DAC_WriteValue(DAC_0,signal[index++]);
 
@@ -93,12 +86,14 @@ void DAC0_IRQHandler()
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
 
+
 uint8_t srcARR[] = {1,2,3,4,5};
 uint8_t destARR[5]={0,0,0,0,0};
 int debugFlag=0;
 
 void App_Init (void)
 {
+
 	//PORT_Config portConf={PORT_LockRegister ,PORT_MuxAlt3,PORT_PullDisable,PORT_FastSlewRate,PORT_OpenDrainDisable,PORT_PassiveFilterDisable, PORT_LowDriveStrength, PORT_InterruptOrDMADisabled };
 	//PORT_PinConfig (PORT_A,0,&portConf);
 	PORTC->PCR[1] =  PORT_PCR_MUX(4); //PTC1  Alt4 FTM0_CH0
@@ -214,6 +209,9 @@ void App_Init (void)
 
 	FTM_EnableOverflowInterrupt(FTM_0);*/
 
+
+	MODEM_Init();
+
 }
 
 void DMA1_IRQHandler(void)
@@ -232,6 +230,7 @@ void DMA0_IRQHandler(void)
 
 void App_Run (void)
 {
+
 	//PDB_Trigger();
 //	while(1)
 //	{
