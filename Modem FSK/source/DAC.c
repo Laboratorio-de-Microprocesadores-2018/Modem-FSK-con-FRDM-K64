@@ -145,6 +145,10 @@ void DAC_EnableBufferDMA (DAC_Instance n, bool enable	)
 		DACs[n]->C1 &= ~DAC_C1_DMAEN_MASK;
 }
 
+uint32_t DAC_GetBufferAddress(DAC_Instance n)
+{
+	return (uint32_t)&(DACs[n]->DAT[0].DATL);
+}
 uint8_t DAC_GetBufferPointer (DAC_Instance n)
 {
 	return ((DACs[n]->C2&DAC_C2_DACBFRP_MASK)>>DAC_C2_DACBFRP_SHIFT);

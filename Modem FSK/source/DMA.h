@@ -104,6 +104,7 @@ typedef struct
     int16_t destinationOffset;
     uint16_t minorLoopBytes;
     uint32_t majorLoopCounts;
+    uint32_t majorLoopAdjust;
 } DMA_TransferConfig;
 
 typedef struct
@@ -144,7 +145,6 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config);
 
 void DMA_EnableInterrupts (uint32_t channel);
 
-
 void DMA_DisableInterrupts (uint32_t channel);
 
 void DMA_TriggerChannelStart (uint32_t channel);
@@ -152,5 +152,5 @@ void DMA_TriggerChannelStart (uint32_t channel);
 void DMA_EnableChannelRequest (uint32_t channel);
 
 void DMA_DisableChannelRequest (uint32_t channel);
-#endif /* DMA_H_ */
 
+#endif /* DMA_H_ */

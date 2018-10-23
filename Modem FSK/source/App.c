@@ -12,23 +12,15 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
-#include "DAC.h"
-#include "ADC.h"
-#include "math.h"
-#include "SysTick.h"
+
+#include "Modem.h"
 #include "GPIO.h"
-#include "DMAMUX.h"
-#include "DMA.h"
-#include "PIT.h"
+
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define SINE_FREQ (1100)
-#define N_SAMPLE (256)
 
-#define DAC_BUFFER_SIZE (1)
-#define DAC_WATERMARK (2)
 /////////////////////////////////////////////////////////////////////////////////
 //                    Enumerations, structures and typedefs                    //
 /////////////////////////////////////////////////////////////////////////////////
@@ -41,17 +33,16 @@
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-static uint16_t signal[N_SAMPLE];
-
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
 /////////////////////////////////////////////////////////////////////////////////
+
 
 void DAC0_IRQHandler()
 {
 	//digitalToggle(PORTNUM2PIN(PC,10));
 
-	static uint8_t index = 0;
+	//static uint8_t index = 0;
 
 	//DAC_WriteValue(DAC_0,signal[index++]);
 
@@ -90,56 +81,15 @@ void DAC0_IRQHandler()
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
 
-uint8_t srcARR[] = {1,2,3,4,5};
-uint8_t destARR[5]={0,0,0,0,0};
-
 
 void App_Init (void)
 {
-
-	DAC_Init(DAC_VREF_2);
-
-	for(int i=0; i<N_SAMPLE; i++)
-		signal[i]=sin((float)i/N_SAMPLE*2*M_PI)*2048+2047;
-
-
-	sysTickInit();
-	sysTickAddCallback(&updateDAC,1/(float)(N_SAMPLE*SINE_FREQ));
-	ADC_Init();
-	//FTM_Config config;
-	//config.clockSource = FTM_SYSTEM_CLOCK;
-	//config.prescale = FTM_PRESCALE_4;
-	//FTM_Init(FTM_0,&config);
-	//FTM_EnableOverflowInterrupt(FTM_0);
-
-
-	FTM_PwmConfig PWMConfig;
-	PWMConfig.channel = FTM_CHNL_0;
-	PWMConfig.mode = FTM_PWM_EDGE_ALIGNED;
-	PWMConfig.PWMFreq = 1000;
-
-	FTM_SetupPwm(FTM_0,&PWMConfig);
-
-	PORTC->PCR[1] =  PORT_PCR_MUX(4); //PTC1  Alt4 FTM0_CH0
-
-
-	FTM_EnableOverflowInterrupt(FTM_0);*/
-
+	MODEM_Init();
 }
 
-void DMA0_IRQHandler(void)
-{
-	int i =0;
-	i++;
-}
+
 void App_Run (void)
 {
-	//PDB_Trigger();
-	while(1)
-	{
-		//DMA_TriggerChannelStart(0);
-	}
-
 
 	//DAC_TriggerBuffer(DAC_0);
 	//uint16_t n= 0x00F;
