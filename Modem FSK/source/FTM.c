@@ -17,7 +17,6 @@ void FTM_Init(FTM_Instance instance, FTM_Config * config)
 	{
 	case FTM_0:
 		SIM->SCGC6 |= SIM_SCGC6_FTM0_MASK;
-		NVIC_EnableIRQ(FTM0_IRQn);
 		break;
 	case FTM_1:
 		SIM->SCGC6 |= SIM_SCGC6_FTM1_MASK;
@@ -33,9 +32,14 @@ void FTM_Init(FTM_Instance instance, FTM_Config * config)
 
 	FTM_Type * FTM = FTMs[instance];
 
+
 	FTM->SC = FTM_SC_CLKS(config->clockSource) | FTM_SC_PS(config->prescale);
 
-	FTM->MOD = 0xFFFF;
+
+	/*NO DARLE CLOCK SOURCE AL FTM HASTA QUE ESTE LISTO PARA ANDAR!!!!!!!!!!!!!*/
+	//FTM->SC = FTM_SC_CLKS(config->clockSource) | FTM_SC_PS(config->prescale);
+
+	//FTM->MOD = 0xFFFF;
 	//pinMode(32+18,OUTPUT);
 }
 
@@ -43,9 +47,49 @@ bool FTM_SetupPwm(FTM_Instance 	instance, FTM_PwmConfig * config)
 {
 	ASSERT(instance < FSL_FEATURE_SOC_FTM_COUNT);
 
+	uint8_t clkSource=(FTMs[instance]->SC&FTM_SC_CLKS_MASK)>>FTM_SC_CLKS_SHIFT;
+	FTMs[instance]->SC&=~FTM_SC_CLKS_MASK;
+
+	if(config->enableDMA == true)
+	{
+		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_DMA_MASK;
+		////////FTMs[instance]->SC |= FTM_SC_CHIE_MASK; // CHANNEL INTERRUPT ENABLE
+	}
+	else
+		(FTMs[instance]->CONTROLS[config->channel].CnSC) &= ~FTM_CnSC_DMA_MASK;
+
+
+
 	if(config->mode == FTM_PWM_CENTER_ALIGNED)
 	{
+		// QUADEN = 0
+		FTMs[instance]->QDCTRL &= ~FTM_QDCTRL_QUADEN_MASK;
+		//DECAPEN = 0 y COMBINE = 0
+		uint32_t COMBINE_MASK[]= {FTM_COMBINE_COMBINE0_MASK,
+									FTM_COMBINE_COMBINE1_MASK,
+									FTM_COMBINE_COMBINE2_MASK,
+									FTM_COMBINE_COMBINE3_MASK};
 
+		uint32_t DECAPEN_MASK[] = {FTM_COMBINE_DECAPEN0_MASK,
+									FTM_COMBINE_DECAPEN1_MASK,
+									FTM_COMBINE_DECAPEN2_MASK,
+									FTM_COMBINE_DECAPEN3_MASK};
+
+		FTMs[instance]->COMBINE &= ~(DECAPEN_MASK[instance]|COMBINE_MASK[instance]);
+
+		/* CPWMS = 1 (Para counting up & down)*/
+		FTMs[instance]->SC |= FTM_SC_CPWMS_MASK;
+		/*CnSC for high true pulses */
+		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_ELSB_MASK;
+
+		uint8_t PS = (FTMs[instance]->SC>> FTM_SC_PS_SHIFT)&FTM_SC_PS_MASK;
+
+		/*MOD*/
+		uint16_t MOD = 50000000 / (2*config->PWMFreq*(1<<PS)) ;
+		FTMs[instance]->MOD=MOD;
+		/*Set CnV*/
+		uint16_t CnV= (uint16_t)((MOD)*(config->dutyCyclePercent/100.0) );
+		FTMs[instance]->CONTROLS[config->channel].CnV=CnV;
 	}
 	else if(config->mode == FTM_PWM_EDGE_ALIGNED)
 	{
@@ -65,41 +109,25 @@ bool FTM_SetupPwm(FTM_Instance 	instance, FTM_PwmConfig * config)
 
 		FTMs[instance]->COMBINE &= ~(DECAPEN_MASK[instance]|COMBINE_MASK[instance]);
 
-		// CPWMS = 0 (Centered PWM)
+		/* CPWMS = 0 (No habilito Centered PWM)*/
 		FTMs[instance]->SC &= ~FTM_SC_CPWMS_MASK;
-/*
-		// MSnB = 1//esta bien esto? parece que hace otra cosa
-		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_ELSB_MASK;
-*/
-		/*------------------yo pondria-------------------------------------------*/
+
+		/*CnSC for edge alligned con high true pulses */
 		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_MSB_MASK | FTM_CnSC_ELSB_MASK;
-		/*-----------------------------------------------------------------------*/
 
 		uint8_t PS = (FTMs[instance]->SC>> FTM_SC_PS_SHIFT)&FTM_SC_PS_MASK;
-/*		Es con 1 en lugar de 2, no? */
-//		uint16_t MOD = 50000000/(config->PWMFreq*(2<<PS))-1;
-		/*---------------cambio-----------------------------------------*/
+
+		/*Set mod*/
 		uint16_t MOD = ( 50000000 / (config->PWMFreq*(1<<PS)) )-1;
 		FTMs[instance]->MOD=MOD;
-		//FTM->MOD = MOD;
-		/*---------------------------------------------------------------*/
+		/*Set CnV*/
 		uint16_t CnV= (uint16_t)((MOD+1)*(config->dutyCyclePercent/100.0) );
 		FTMs[instance]->CONTROLS[config->channel].CnV=CnV;
-
-		return true; //cambiar
-		// HACER CUENTAS
-		//CnV = 65536/2;
-		// Width = CnV − CNTIN
 	}
 
-	if(config->enableDMA == true)
-	{
-		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_DMA_MASK;
-		////////FTMs[instance]->SC |= FTM_SC_CHIE_MASK; // CHANNEL INTERRUPT ENABLE
-	}
-	else
-		FTMs[instance]->CONTROLS[config->channel].CnSC &= ~FTM_CnSC_DMA_MASK;
 
+	FTMs[instance]->SC |= FTM_SC_CLKS(clkSource);
+	return true; //cambiar
 }
 
 

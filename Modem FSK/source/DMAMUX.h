@@ -1,6 +1,7 @@
 #ifndef DMAMUX_H_
 #define DMAMUX_H_
-
+#include "stdint.h"
+#include "stdbool.h"
 
 typedef enum{
 	DMAMUX_UART0_RX,
@@ -75,5 +76,3 @@ void DMAMUX_DisableChannel (uint32_t channel);
 void DMAMUX_SetSource ( uint32_t channel, DMAMUX_Source source);
 
 #endif /* DMAMUX_H_ */
-
-
