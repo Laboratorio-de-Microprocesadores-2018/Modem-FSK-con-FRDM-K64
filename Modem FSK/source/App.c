@@ -13,6 +13,7 @@
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
 #include "Modem.h"
+#include "UART.h"
 #include "GPIO.h"
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +32,10 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
+static uint8_t UartRxBuffer[10];
+static uint8_t UartRxLen;
+static uint8_t ModemRxBuffer[10];
+static uint8_t ModemRxLen;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
@@ -83,33 +88,22 @@ void DAC0_IRQHandler()
 
 void App_Init (void)
 {
+	UARTInit();
 	MODEM_Init();
 }
 
 
 void App_Run (void)
 {
+	UartRxLen = sizeof(UartRxBuffer);
+	ModemRxLen = sizeof(ModemRxBuffer);
 
-	//DAC_TriggerBuffer(DAC_0);
-	//uint16_t n= 0x00F;
-	//while(n--);
-	/*static uint64_t debounceTime;
-	static uint8_t currState, lastState;
-
-	currState = digitalRead(PIN_SW2);
-
-	if(currState!=lastState)
+	if(UART_RecieveData(UartRxBuffer,&UartRxLen))
 	{
-		lastState = currState;
-		debounceTime = millis();
+		for(int i=0; i<UartRxLen; i++)
+			MODEM_SendData(UartRxBuffer[i]);
 	}
-	else if (lastState == 1 && (millis() - debounceTime) > 25)
-	{
-		lastState=0;
-
-		uint8_t pointe = DAC_GetBufferPointer(DAC_0);
-	}*/
-
-
+	if(MODEM_ReceiveData(ModemRxBuffer,&ModemRxLen))
+		UART_SendData(ModemRxBuffer,ModemRxLen);
 }
 
