@@ -69,7 +69,7 @@ void MODEM_Init()
 		uint16_t s = sin((float)i/(N_SAMPLE)*2*M_PI)*2048+2047;
 		signal[i]= s;
 	}
-
+/*
 	// DMA0 AlwaysEnabled
 	DMAMUX_Init();
 	DMAMUX_SetSource(0,DMAMUX_AlwaysEnabled3);
@@ -97,8 +97,10 @@ void MODEM_Init()
 
 	DAC_Init(DAC_0,DAC_VREF_2);
 	DAC_Enable(DAC_0);
+*/
+	ADC_Init();
 
-
+/*
 	PIT_Config PITConfig;
 	PITConfig.debugModeEnable=true;
 	PIT_Init(&PITConfig);
@@ -107,7 +109,7 @@ void MODEM_Init()
     PIT_SetTimerPeriod (PIT_CHNL_0, T1);
 	PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
 	PIT_TimerEnable(PIT_CHNL_0, true);
-
+*/
 	// Set periodic interrupt to modulate
 	//PIT_SetTimerPeriod (PIT_CHNL_1, 41666);
 	//PIT_TimerIntrruptEnable(PIT_CHNL_1, true);

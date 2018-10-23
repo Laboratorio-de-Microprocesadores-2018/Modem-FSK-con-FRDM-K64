@@ -34,7 +34,7 @@ void ADC_Init(void)
 	ADC0->SC3 = ADC_SC3_ADCO(1);
 
 
-	// Enable ADC
+	// Enable ADC Interrupts
 	ADC0->SC1[0] |= ADC_SC1_AIEN(1);
 }
 
@@ -70,11 +70,25 @@ void ADC0_IRQHandler(void){
 
 void ADC_config(void){
 
+	/* Configuro para que la señal entre de forma single ended (DIFF = 0) y que el canal utilizado sea el DAP0 ADCH = (DAD0)*/
 	ADC0->SC1[0] = ADC_SC1_DIFF(0) | ADC_SC1_ADCH(DAD0);
 
+
+	/*Configuración de CLK source (ADCLK) y (ADIV), de resolución MODE, power consumption (ADLPC) y sampling time (ADLSMP)*/
+	/*Divido el ADCLK por dos ADIV(DIV2),  teniendo en cuenta que el source es el CLK_BUS/2 ADICLK(ADICLK_BUS2), la frecuencia del ADCLK queda
+	 * ADCLK = (BUS_CLK/2)*(1/2) = (50 (MHz)/2) * (1/2) = 12.5 (MHz). Si verificamos el datasheet del cortex, este valor esta dentro del rango
+	 * permitido para el correcto funcionamiento del ADC.
+	 * Por otra parte la resolución del conversor sera de 10 bits MODE(HIGHRES). Teniendo en cuenta que la frecuencia máxima a muestrear será
+	 * de 2200 (Hz), esto da como resultado que en un período de la misma habra 5681 (cycles) del ADCLK, luego chequeando que la cantidad de
+	 * (cycles) del ADCLK para una conversión del ADC no superará los 50 (cycles), esto nos deja con una cantidad de al menos 113 muestras por
+	 * período de señal. Luego corroboramos que la configuración elegida da un margen adecuado para la aplicación que se budca.*/
 	ADC0->CFG1 = ADC_CFG1_ADLPC(0) | ADC_CFG1_ADIV(DIV2) | ADC_CFG1_ADLSMP(0) | ADC_CFG1_MODE(HIGHRES) | ADC_CFG1_ADICLK(ADICLK_BUS2);
 
+	/*Se configura para que la tensión de referencia sea VDDA REFSEL(AD_REFV), (Esta esta conectada a 3.3 (V) en la placa FRDM).
+	 * Por otra parte se configra para que el inicio de la conversion sea triggereada por software ADTRG(0)*/
 	ADC0->SC2 = ADC_SC2_REFSEL(AD_REFV) | ADC_SC2_ADTRG(0);
+	/*Activo las DMA requests*/
+	//ADC0->SC2 =  ADC_SC2_DMAEN(1);
 }
 
 uint8_t ADC_callibrate(void){
