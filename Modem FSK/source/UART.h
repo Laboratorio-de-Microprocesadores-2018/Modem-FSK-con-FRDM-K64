@@ -46,15 +46,15 @@ void UARTSetBaudRate (UART_Type *uart, uint32_t baudrate);
  * @param len Length of the chunk of data to transmit.
  * @return true if everything went fine, false if there was an error.
  */
-bool UARTSendData( uint8_t * tx_data, uint8_t len);
+bool UART_SendData( uint8_t * tx_data, uint8_t len);
 
 /**
  * @brief Service funcition to get the recieved data through the UART module.
  * @param rx_data Pointer to the begining of the memory place where to save the data.
- * @param len Maximum amount of data words to be saved.
+ * @param len Pointer to variable with maximum amount of data words to be saved.
  * @return true if everything went fine, false if there was an error.
  */
-bool UARTRecieveData( uint8_t * rx_data, uint8_t len);
+uint8_t UART_RecieveData( uint8_t * rx_data, uint8_t * len);
 
 
 #endif /* UART_H_ */

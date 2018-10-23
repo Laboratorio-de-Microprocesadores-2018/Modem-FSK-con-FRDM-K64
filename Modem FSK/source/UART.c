@@ -49,7 +49,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                    Enumerations, structures and typedefs                    //
 /////////////////////////////////////////////////////////////////////////////////
-typedef enum{TXOF_ERR = 0, RXOF_ERR, BUFFFULL_ERR, BUFFEMPTY_ERR, UART0IRQ_ERR, NO_ERR};
+typedef enum{TXOF_ERR = 0, RXOF_ERR, BUFFFULL_ERR, BUFFEMPTY_ERR, UART0IRQ_ERR, NO_ERR} UART_Error;
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +169,7 @@ void UARTSetBaudRate (UART_Type *uart, uint32_t baudrate)
  * @param len Length of the chunk of data to transmit.
  * @return true if everything went fine, false if there was an error.
  */
-bool UARTSendData( uint8_t * tx_data, uint8_t len)
+bool UART_SendData( uint8_t * tx_data, uint8_t len)
 {
 	#ifdef MEASURE_UART
 		BITBAND_REG(MEASURE_UART_GPIO->PDOR, MEASURE_UART_PIN) = 1;
@@ -199,21 +199,21 @@ bool UARTSendData( uint8_t * tx_data, uint8_t len)
  * @param len Maximum amount of data words to be saved.
  * @return true if everything went fine, false if there was an error.
  */
-bool UARTRecieveData( uint8_t * rx_data, uint8_t len)
+uint8_t UART_RecieveData( uint8_t * rx_data, uint8_t * len)
 {
 	#ifdef MEASURE_UART
 		BITBAND_REG(MEASURE_UART_GPIO->PDOR, MEASURE_UART_PIN) = 1;
 	#endif
 
 	uint8_t lenRet = 0 ;
-	while( (lenRet < len) && pop(&recieveBuffer, &rx_data[lenRet]))
+	while( (lenRet < (*len)) && pop(&recieveBuffer, &rx_data[lenRet]))
 		lenRet ++;
 
 	#ifdef MEASURE_UART
 		BITBAND_REG(MEASURE_UART_GPIO->PDOR, MEASURE_UART_PIN) = 0;
 	#endif
 
-	return lenRet;
+	(*len)= lenRet;
 }
 
 /**
