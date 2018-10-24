@@ -154,4 +154,3 @@ void DMA_EnableChannelRequest (uint32_t channel);
 void DMA_DisableChannelRequest (uint32_t channel);
 
 #endif /* DMA_H_ */
-

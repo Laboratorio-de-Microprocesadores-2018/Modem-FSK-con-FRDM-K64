@@ -12,15 +12,23 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
+
 #include "Modem.h"
+
+#include "UART.h"
+
 #include "GPIO.h"
+#include "SysTick.h"
+
+
+#include "math.h"
+#include "SysTick.h"
+#include "DAC.h"
 #include "DMAMUX.h"
-#include "hardware.h"//SACA LA MANO DE AHI APP.C!!!!
-#include "FTM.h"
 #include "DMA.h"
 #include "PIT.h"
-
-
+#include "stdlib.h"
+#include "FTM.h"
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +45,10 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
+static uint8_t UartRxBuffer[10];
+static uint8_t UartRxLen;
+static uint8_t ModemRxBuffer[10];
+static uint8_t ModemRxLen;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
@@ -99,6 +111,7 @@ uint16_t CnVTableL[BIT_FREC/PWM_FREC];
 uint16_t CnVTableH[BIT_FREC/PWM_FREC];
 void App_Init (void)
 {
+
 
 	/*------------------------------------------------------------------------*/
 	/*primero seteo dma*/
@@ -248,10 +261,18 @@ void App_Init (void)
 
 	FTM_EnableOverflowInterrupt(FTM_0);*/
 
+/*
+	UARTInit();
+
 
 	MODEM_Init();
 
+	sysTickInit();
+	pinMode(PIN_SW2,INPUT);
+	pinMode(PIN_LED_GREEN,OUTPUT);*/
+
 }
+
 
 /*void DMA1_IRQHandler(void)
 {
@@ -260,6 +281,9 @@ void App_Init (void)
 	i++;
 }
 
+
+
+
 void DMA0_IRQHandler(void)
 {
 	int i =0;
@@ -267,43 +291,75 @@ void DMA0_IRQHandler(void)
 	i++;
 }*/
 
+static int currState,lastState;
+static uint64_t lastDebounceTime;
+
+
+
 void App_Run (void)
 {
+/*
+	if((millis()-lastDebounceTime)>=500)
+	{
+		lastDebounceTime = millis();
+		MODEM_SendData(0x01);
+		uint64_t t = millis();
+		while((millis()-t)<5);
 
-	//PDB_Trigger();
-//	while(1)
-//	{
-		/*if( destARR[4]==5)
-		//if(debugFlag)
-		{
+		MODEM_SendData(0x02);
+		t = millis();
+		while((millis()-t)<9);
 
-			debugFlag=9;
-		}
-		//DMA_TriggerChannelStart(0);*/
-//	}
+		MODEM_SendData(0x03);
+		t = millis();
+		while((millis()-t)<9);
 
+		MODEM_SendData(0x04);
+		digitalToggle(PIN_LED_GREEN);
+	}
 
-	//DAC_TriggerBuffer(DAC_0);
-	//uint16_t n= 0x00F;
-	//while(n--);
-	/*static uint64_t debounceTime;
-	static uint8_t currState, lastState;
-
+	/*
+	static int debounced;
 	currState = digitalRead(PIN_SW2);
-
 	if(currState!=lastState)
 	{
-		lastState = currState;
-		debounceTime = millis();
+		debounced = 0;
+		lastState=currState;
+		lastDebounceTime = millis();
 	}
-	else if (lastState == 1 && (millis() - debounceTime) > 25)
-	{
-		lastState=0;
 
-		uint8_t pointe = DAC_GetBufferPointer(DAC_0);
+	if((millis()-lastDebounceTime)>=40 && debounced == 0)
+	{
+		debounced = 1;
+		if(lastState==0)
+		{
+			MODEM_SendData(0x10101010b);
+			digitalWrite(PIN_LED_GREEN,0);
+		}
+		else
+		{
+			digitalWrite(PIN_LED_GREEN,1);
+		}
 	}*/
 
 
+
+
+/*
+// Mas o menos asi seria el main loop
+	UartRxLen = sizeof(UartRxBuffer);
+	ModemRxLen = sizeof(ModemRxBuffer);
+
+	if(UART_RecieveData(UartRxBuffer,&UartRxLen))
+	{
+		for(int i=0; i<UartRxLen; i++)
+		{
+			MODEM_SendData(UartRxBuffer[i]);
+			UART_SendData(UartRxBuffer,UartRxLen);
+		}
+	}*/
+	/*if(MODEM_ReceiveData(ModemRxBuffer,&ModemRxLen))
+		UART_SendData(ModemRxBuffer,ModemRxLen);*/
 }
 
 

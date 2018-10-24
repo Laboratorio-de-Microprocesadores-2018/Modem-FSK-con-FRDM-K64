@@ -48,6 +48,7 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 	DMA0->TCD[channel].SLAST = config->majorLoopAdjust;
 	DMA0->TCD[channel].DLAST_SGA=0x00;
 
+
 	DMA0->TCD[channel].CITER_ELINKNO = DMA_CITER_ELINKNO_CITER(config->majorLoopCounts);
 	DMA0->TCD[channel].BITER_ELINKNO = DMA_BITER_ELINKNO_BITER(config->majorLoopCounts);
 
@@ -60,7 +61,7 @@ void DMA_EnableInterrupts (uint32_t channel)
 
 	/**POR AHORA PONGO IGUAL ACA ASI SE LIMPIA*/
 	/*		CAMBIARLO DESPUES								*/
-	DMA0->TCD[channel].CSR=DMA_CSR_INTMAJOR_MASK;
+	DMA0->TCD[channel].CSR=DMA_CSR_INTMAJOR_MASK|DMA_CSR_DREQ_MASK;//nuevo, la segunda mascara para que no siga trigereando requests
 	NVIC_ClearPendingIRQ(DMA1_IRQn);//nuevo, ver si se saca
 	NVIC_EnableIRQ(irqTable[channel]);
 }
@@ -92,6 +93,4 @@ void DMA_DisableChannelRequest (uint32_t channel)
 
 	DMA0->ERQ &= ~(1<<channel);
 }
-
-
 
