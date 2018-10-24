@@ -60,7 +60,7 @@ void DMA_EnableInterrupts (uint32_t channel)
 
 	/**POR AHORA PONGO IGUAL ACA ASI SE LIMPIA*/
 	/*		CAMBIARLO DESPUES								*/
-	DMA0->TCD[channel].CSR=DMA_CSR_INTMAJOR_MASK|DMA_CSR_DREQ_MASK;//nuevo, la segunda mascara para que no siga trigereando requests
+	DMA0->TCD[channel].CSR=DMA_CSR_INTMAJOR_MASK;
 	NVIC_ClearPendingIRQ(DMA1_IRQn);//nuevo, ver si se saca
 	NVIC_EnableIRQ(irqTable[channel]);
 }

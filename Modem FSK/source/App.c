@@ -86,13 +86,52 @@ void DAC0_IRQHandler()
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
 
+//uint8_t srcARR[] = {1,2,3,4,5};
+//uint8_t destARR[5]={0,0,0,0,0};
 
-uint8_t srcARR[] = {1,2,3,4,5};
-uint8_t destARR[5]={0,0,0,0,0};
-int debugFlag=0;
+#define PI               3.14159265358979f
+#include "math.h"
 
+
+#define BIT_FREC 1200
+#define PWM_FREC 98400
+uint16_t CnVTableL[BIT_FREC/PWM_FREC];
+uint16_t CnVTableH[BIT_FREC/PWM_FREC];
 void App_Init (void)
 {
+
+	/*------------------------------------------------------------------------*/
+	/*primero seteo dma*/
+
+	DMA_Config DMAconfig;
+	DMA_GetDefaultConfig(&DMAconfig);
+	DMA_Init(&DMAconfig);
+
+
+
+	DMA_TransferConfig DMATransfer;
+	DMATransfer.sourceAddress = (uint32_t)CnVTableL;
+	DMATransfer.destinationAddress = FTM_GetCnVAddress(0,0);
+	DMATransfer.destinationOffset = 0;
+	DMATransfer.sourceOffset = 1;
+	DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+	DMATransfer.majorLoopCounts = BIT_FREC/PWM_FREC;//5
+	DMATransfer.minorLoopBytes = 1;
+
+	DMA_SetTransferConfig(1,&DMATransfer);
+	//DMA_EnableInterrupts(1);
+	DMA_EnableChannelRequest (1);
+
+
+
+	DMAMUX_SetSource(1,DMAMUX_FTM0_CH0);
+	DMAMUX_EnableChannel(1,false);
+
+
+	/*despues configuro ftm(y le activo dma requests)*/
+
+
 
 	//PORT_Config portConf={PORT_LockRegister ,PORT_MuxAlt3,PORT_PullDisable,PORT_FastSlewRate,PORT_OpenDrainDisable,PORT_PassiveFilterDisable, PORT_LowDriveStrength, PORT_InterruptOrDMADisabled };
 	//PORT_PinConfig (PORT_A,0,&portConf);
@@ -100,7 +139,7 @@ void App_Init (void)
 	//FTM PWM Test
 	FTM_Config config;
 	config.clockSource = FTM_SYSTEM_CLOCK;
-	config.prescale = FTM_PRESCALE_4;
+	config.prescale = FTM_PRESCALE_1;
 	FTM_Init(FTM_0,&config);
 
 	FTM_PwmConfig PWMConfig;
@@ -111,7 +150,7 @@ void App_Init (void)
 	PWMConfig.dutyCyclePercent=30;
 
 	FTM_SetupPwm(FTM_0,&PWMConfig);
-
+/*----------------------------------------------------------------------------*/
 	//PORTA->PCR[0] =  PORT_PCR_MUX(3); //PTA0  Alt3 FTM0_CH5
 
 	/*
@@ -214,7 +253,7 @@ void App_Init (void)
 
 }
 
-void DMA1_IRQHandler(void)
+/*void DMA1_IRQHandler(void)
 {
 	int i =0;
 	debugFlag=1;
@@ -226,7 +265,7 @@ void DMA0_IRQHandler(void)
 	int i =0;
 	debugFlag=1;
 	i++;
-}
+}*/
 
 void App_Run (void)
 {
@@ -267,3 +306,33 @@ void App_Run (void)
 
 }
 
+
+void createCnVSineTables(uint16_t *arr1,uint16_t *arr2, uint16_t size,uint16_t mod)//size=PWM_FREC/BIT_FREC
+{
+	double a=0;
+	for(uint16_t i; i<size; i++)
+	{
+		//DUTY VALUES
+		a=(1+sin(2*PI*i/size))/2.0;
+
+
+		arr1[i]=(uint16_t)(a*mod);
+		if(arr1[i]==0)
+			arr1[i]=1;
+		if(arr1[i]==mod)
+			arr1[i]-=1;
+	}
+	for(uint16_t i; i<size; i++)
+	{
+		a=(1+sin(2*PI*i*2/size))/2.0;
+		arr2[i]=(uint16_t)(a*mod);
+		if(arr2[i]==0)
+			arr2[i]=1;
+		if(arr2[i]==mod)
+			arr2[i]-=1;
+	}
+
+
+
+
+}

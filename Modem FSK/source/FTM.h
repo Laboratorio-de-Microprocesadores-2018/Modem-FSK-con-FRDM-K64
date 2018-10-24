@@ -98,5 +98,6 @@ void FTM_GetDefaultConfig(FTM_Config * config);
 void FTM_Init(FTM_Instance instance, FTM_Config * config);
 bool FTM_SetupPwm(FTM_Instance 	instance,FTM_PwmConfig * config);
 void FTM_UpdatePwmDutycycle(FTM_Instance 	instance,FTM_Channel channel,uint8_t dutyCyclePercent);//en principio no seria necesaria
-
+uint32_t FTM_GetCnVAddress(FTM_Instance 	instance,FTM_Channel channel);
+uint16_t FTM_GetModValue(FTM_Instance instance);
 #endif /* FTM_H_ */
