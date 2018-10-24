@@ -120,7 +120,7 @@ void MODEM_Init()
 	 DMAMUX_Init();
 	 DMAMUX_SetSource(1,DMAMUX_ADC0);
 
-	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
+	// DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
 	 DMATransfer.sourceOffset = 0;
 	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
 
