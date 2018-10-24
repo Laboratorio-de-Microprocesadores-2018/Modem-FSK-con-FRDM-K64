@@ -87,6 +87,7 @@ void ADC_config(void){
 	/*Se configura para que la tensión de referencia sea VDDA REFSEL(AD_REFV), (Esta esta conectada a 3.3 (V) en la placa FRDM).
 	 * Por otra parte se configra para que el inicio de la conversion sea triggereada por software ADTRG(0)*/
 	ADC0->SC2 = ADC_SC2_REFSEL(AD_REFV) | ADC_SC2_ADTRG(0);
+
 	/*Activo las DMA requests*/
 	//ADC0->SC2 =  ADC_SC2_DMAEN(1);
 }

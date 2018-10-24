@@ -8,6 +8,7 @@
 #include "DMA.h"
 #include "PIT.h"
 #include "stdlib.h"
+#include <stdbool.h>
 
 
 #define BUS_CLOCK 50000000
@@ -52,6 +53,62 @@ void modulate(void * data)
 #ifdef MEASURE_CPU_TIME
 	BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 0;
 #endif
+}
+
+void deModulate()
+{
+	uint8_t m[SAMPLE_NUM];
+	k = ceil((446e-6)/(1/fs));
+	for(int i = 0; i<n; i++)
+	{
+		m(i) =  x(i) * x(i-k);
+	}
+	err = FSKLPFilter(m, h, d);
+	if(~err)
+	{
+		comparator(d,out);
+	}else
+	{
+		return;
+	}
+
+
+}
+
+bool FSKLPFilter(uint8_t m[SAMPLE_NUM], uint8_t d[SAMPLE_NUM])
+{
+	for(int i = 0; i<SAMPLE_NUM; i++)
+	{
+		d(i) = convolution(x, h);
+	}
+}
+
+uint8_t convolution(uint8_t x[],uint8_t h[])
+{
+	uint8_t y = 0;
+	if(sizeof(x) == sizeof(h))
+	{
+		err = false;
+		n = sizeof(h);
+		for (int i=0; i<n; i++)
+			y = y + x(i)*h(n - i);
+	}
+	else{
+		err = true;
+	}
+	return y;
+}
+
+void comparator(uint8_t x[SAMPLE_NUM], uint8_t out[BITS_NUM])
+{
+	for(int i=0; i<SAMPLE_NUM; i++)
+	{
+	    uint8_t newVal = x(i);
+	    if (newVal > HYSTERESIS)
+	        out(i) = 1;
+	    else if (newVal < -HYSTERESIS)
+	        out(i) = 0;
+	}
 }
 
 
