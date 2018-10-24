@@ -98,28 +98,28 @@ void PIT_ChainMode(PIT_Channel n,bool enable)
 		PIT->CHANNEL[n].TCTRL &= ~PIT_TCTRL_CHN_MASK;
 }
 
-void PIT0_IRQHandler(void)
+__ISR__ PIT0_IRQHandler(void)
 {
 	//ASSERT(PIT_Callbacks[0] != NULL);
 
 	//PIT_Callbacks[0](PIT_CallbackData[0]);
 	PIT->CHANNEL[0].TFLG = 1;
 }
-void PIT1_IRQHandler(void)
+__ISR__  PIT1_IRQHandler(void)
 {
 	ASSERT(PIT_Callbacks[1] != NULL);
 
 	PIT_Callbacks[1](PIT_CallbackData[1]);
 	PIT->CHANNEL[1].TFLG = 1;
 }
-void PIT2_IRQHandler(void)
+__ISR__  PIT2_IRQHandler(void)
 {
 	ASSERT(PIT_Callbacks[2] != NULL);
 
 	PIT_Callbacks[2](PIT_CallbackData[2]);
 	PIT->CHANNEL[2].TFLG = 1;
 }
-void PIT3_IRQHandler(void)
+__ISR__  PIT3_IRQHandler(void)
 {
 	ASSERT(PIT_Callbacks[3] != NULL);
 
