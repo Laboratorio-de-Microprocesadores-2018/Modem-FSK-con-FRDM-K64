@@ -11,7 +11,7 @@
 
 
 #define BUS_CLOCK 50000000
-#define N_SAMPLE (128)
+#define N_SAMPLE (256)
 #define F1 (1100)
 #define F2 (2200)
 #define	T1 BUS_CLOCK/(N_SAMPLE*F1)
@@ -20,7 +20,8 @@
 #define SPACE T2
 #define BIT2PERIOD(x) (x)==1? MARK:SPACE
 
-
+#define DAC_DMA_CHANNEL 0
+#define ADC_DMA_CHANNEL 1
 
 static uint16_t signal[N_SAMPLE];
 
@@ -34,12 +35,16 @@ static uint16_t signal[N_SAMPLE];
 static unsigned int parityTable[256] = { LOOK_UP };
 
 
-
-#define bufferSize 20
+#define bufferSizeDataBytes (30)
+#define frameSizeBits (11)
+#define bufferSize bufferSizeDataBytes*frameSizeBits
 #define bufferEmpty (head==tail)
 #define bufferFull	(tail+1==head)
-static uint32_t outputBuffer[bufferSize];
+static uint32_t outcomingBits[bufferSize];
 static uint8_t head,tail;
+
+static uint16_t ADCSamples[11];
+static uint8_t inputBytes[10];
 
 
 #define MEASURE_CPU_TIME
@@ -64,7 +69,7 @@ void modulate(void * data)
 		PIT_SetTimerPeriod (PIT_CHNL_0, MARK);
 	else
 	{
-		PIT_SetTimerPeriod (PIT_CHNL_0, outputBuffer[tail]);
+		PIT_SetTimerPeriod (PIT_CHNL_0, outcomingBits[tail]);
 		tail = (tail + 1)%bufferSize;
 	}
 
@@ -87,16 +92,15 @@ void MODEM_Init()
 		signal[i]= s;
 	}
 
-	// DMA0 AlwaysEnabled
-	DMAMUX_Init();
-	DMAMUX_SetSource(0,DMAMUX_AlwaysEnabled3);
-	DMAMUX_EnableChannel(0,true);
-
 	DMA_Config DMAconfig;
 	DMA_GetDefaultConfig(&DMAconfig);
-	DMAconfig.enableDebugMode=true;
+	DMAconfig.enableDebugMode=false;
 	DMA_Init(&DMAconfig);
+	DMAMUX_Init();
 
+    // Configure DMA0 to copy from sine table to DAC
+	DMAMUX_SetSource(DAC_DMA_CHANNEL,DMAMUX_AlwaysEnabled3);
+	DMAMUX_EnableChannel(DAC_DMA_CHANNEL,true);
 
 	DMA_TransferConfig DMATransfer;
 	DMATransfer.sourceAddress = (uint32_t)signal;
@@ -108,8 +112,29 @@ void MODEM_Init()
 	DMATransfer.majorLoopCounts = N_SAMPLE;
 	DMATransfer.minorLoopBytes = 2;
 	DMATransfer.majorLoopAdjust = -1*sizeof(signal);
-	DMA_SetTransferConfig(0,&DMATransfer);
-	DMA_EnableChannelRequest (0);
+	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
+	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
+
+	 // Configure DMA1 to copy from ADC to buffer
+
+	 DMAMUX_Init();
+	 DMAMUX_SetSource(1,DMAMUX_ADC0);
+
+	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
+	 DMATransfer.sourceOffset = 0;
+	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+
+	 DMATransfer.destinationAddress = (uint32_t)ADCSamples;
+	 DMATransfer.destinationOffset = 2;
+	 DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+
+	 DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
+	 DMATransfer.minorLoopBytes = 2;
+	 DMATransfer.majorLoopAdjust = -1*sizeof(ADCSamples);
+
+	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
+	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
+	 DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
 
 
 	DAC_Init(DAC_0,DAC_VREF_2);
@@ -141,22 +166,22 @@ void MODEM_SendData(uint8_t data)
 	PIT_TimerIntrruptEnable(PIT_CHNL_1, false);
 
 	// Start bit
-	outputBuffer[head]=BIT2PERIOD(0);
+	outcomingBits[head]=BIT2PERIOD(0);
 	head = (head + 1)%bufferSize;
 
 	// Data bits
 	for(int i=0; i<8; i++)
 	{
-		outputBuffer[head]=BIT2PERIOD( (data>>i)&(1) );
+		outcomingBits[head]=BIT2PERIOD( (data>>i)&(1) );
 		head = (head + 1)%bufferSize;
 	}
 
 	// Parity bit
-	outputBuffer[head]=BIT2PERIOD(parityTable[data]);
+	outcomingBits[head]=BIT2PERIOD(parityTable[data]);
 	head = (head + 1)%bufferSize;
 
 	// Stop bit
-	outputBuffer[head]=BIT2PERIOD(1);
+	outcomingBits[head]=BIT2PERIOD(1);
 	head = (head + 1)%bufferSize;
 
 	// Enable interrupts
