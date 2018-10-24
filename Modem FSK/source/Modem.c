@@ -1,5 +1,4 @@
 #include "Modem.h"
-
 #include "math.h"
 #include "SysTick.h"
 #include "DAC.h"
@@ -77,7 +76,7 @@ void modulate(void * data)
 }
 
 
-void MODEM_Init()
+void MODEM_Init(MODEM_Config * config)
 {
 #ifdef MEASURE_CPU_TIME
 	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
@@ -111,7 +110,8 @@ void MODEM_Init()
 	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
 	DMATransfer.majorLoopCounts = N_SAMPLE;
 	DMATransfer.minorLoopBytes = 2;
-	DMATransfer.majorLoopAdjust = -1*sizeof(signal);
+	DMATransfer.sourceLastAdjust = -1*sizeof(signal);
+	DMATransfer.destinationLastAdjust = 0;
 	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
 	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
@@ -120,17 +120,19 @@ void MODEM_Init()
 	 DMAMUX_Init();
 	 DMAMUX_SetSource(1,DMAMUX_ADC0);
 
-	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
+	// DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
 	 DMATransfer.sourceOffset = 0;
 	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+	 DMATransfer.sourceLastAdjust = 0;
 
 	 DMATransfer.destinationAddress = (uint32_t)ADCSamples;
 	 DMATransfer.destinationOffset = 2;
 	 DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+	 DMATransfer.destinationLastAdjust = -1*sizeof(ADCSamples);
 
 	 DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
 	 DMATransfer.minorLoopBytes = 2;
-	 DMATransfer.majorLoopAdjust = -1*sizeof(ADCSamples);
+
 
 	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
 	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
