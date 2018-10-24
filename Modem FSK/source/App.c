@@ -12,7 +12,9 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
+
 #include "Modem.h"
+
 #include "UART.h"
 
 #include "GPIO.h"
@@ -87,18 +89,27 @@ void DAC0_IRQHandler()
 /////////////////////////////////////////////////////////////////////////////////
 
 
+uint8_t srcARR[] = {1,2,3,4,5};
+uint8_t destARR[5]={0,0,0,0,0};
+int debugFlag=0;
+
 void App_Init (void)
 {
+
 	UARTInit();
+
 	MODEM_Init();
+
 	sysTickInit();
 	pinMode(PIN_SW2,INPUT);
 	pinMode(PIN_LED_GREEN,OUTPUT);
 
 }
 
+
 static int currState,lastState;
 static uint64_t lastDebounceTime;
+
 
 void App_Run (void)
 {

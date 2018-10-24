@@ -92,6 +92,3 @@ void DMA_DisableChannelRequest (uint32_t channel)
 
 	DMA0->ERQ &= ~(1<<channel);
 }
-
-
-

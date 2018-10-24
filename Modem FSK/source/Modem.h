@@ -12,3 +12,4 @@ bool MODEM_ReceiveData(uint8_t * buffer, uint8_t * length);
 
 
 #endif /* MODEM_H_ */
+
