@@ -14,8 +14,9 @@
 /////////////////////////////////////////////////////////////////////////////////
 #include "Modem.h"
 #include "UART.h"
-#include "GPIO.h"
 
+#include "GPIO.h"
+#include "SysTick.h"
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
@@ -90,20 +91,78 @@ void App_Init (void)
 {
 	UARTInit();
 	MODEM_Init();
+	sysTickInit();
+	pinMode(PIN_SW2,INPUT);
+	pinMode(PIN_LED_GREEN,OUTPUT);
+
 }
 
+static int currState,lastState;
+static uint64_t lastDebounceTime;
 
 void App_Run (void)
 {
+
+	if((millis()-lastDebounceTime)>=500)
+	{
+		lastDebounceTime = millis();
+		MODEM_SendData(0x01);
+		uint64_t t = millis();
+		while((millis()-t)<5);
+
+		MODEM_SendData(0x02);
+		t = millis();
+		while((millis()-t)<9);
+
+		MODEM_SendData(0x03);
+		t = millis();
+		while((millis()-t)<9);
+
+		MODEM_SendData(0x04);
+		digitalToggle(PIN_LED_GREEN);
+	}
+
+	/*
+	static int debounced;
+	currState = digitalRead(PIN_SW2);
+	if(currState!=lastState)
+	{
+		debounced = 0;
+		lastState=currState;
+		lastDebounceTime = millis();
+	}
+
+	if((millis()-lastDebounceTime)>=40 && debounced == 0)
+	{
+		debounced = 1;
+		if(lastState==0)
+		{
+			MODEM_SendData(0x10101010b);
+			digitalWrite(PIN_LED_GREEN,0);
+		}
+		else
+		{
+			digitalWrite(PIN_LED_GREEN,1);
+		}
+	}*/
+
+
+
+
+/*
+// Mas o menos asi seria el main loop
 	UartRxLen = sizeof(UartRxBuffer);
 	ModemRxLen = sizeof(ModemRxBuffer);
 
 	if(UART_RecieveData(UartRxBuffer,&UartRxLen))
 	{
 		for(int i=0; i<UartRxLen; i++)
+		{
 			MODEM_SendData(UartRxBuffer[i]);
-	}
-	if(MODEM_ReceiveData(ModemRxBuffer,&ModemRxLen))
-		UART_SendData(ModemRxBuffer,ModemRxLen);
+			UART_SendData(UartRxBuffer,UartRxLen);
+		}
+	}*/
+	/*if(MODEM_ReceiveData(ModemRxBuffer,&ModemRxLen))
+		UART_SendData(ModemRxBuffer,ModemRxLen);*/
 }
 
