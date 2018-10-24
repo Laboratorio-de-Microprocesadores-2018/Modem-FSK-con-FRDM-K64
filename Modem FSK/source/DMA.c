@@ -45,8 +45,8 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 
 	DMA0->TCD[channel].NBYTES_MLNO = config->minorLoopBytes;
 
-	DMA0->TCD[channel].SLAST = config->majorLoopAdjust;
-	DMA0->TCD[channel].DLAST_SGA=0x00;
+	DMA0->TCD[channel].SLAST = config->sourceLastAdjust;
+	DMA0->TCD[channel].DLAST_SGA=config->destinationLastAdjust;
 
 	DMA0->TCD[channel].CITER_ELINKNO = DMA_CITER_ELINKNO_CITER(config->majorLoopCounts);
 	DMA0->TCD[channel].BITER_ELINKNO = DMA_BITER_ELINKNO_BITER(config->majorLoopCounts);
