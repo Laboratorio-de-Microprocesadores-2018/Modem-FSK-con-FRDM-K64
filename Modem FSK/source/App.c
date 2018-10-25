@@ -66,8 +66,7 @@ static uint8_t UartRxBuffer[10];
 
 #define BIT_FREC 1200
 #define PWM_FREC 98400
-uint16_t CnVTableL[BIT_FREC/PWM_FREC];
-uint16_t CnVTableH[BIT_FREC/PWM_FREC];
+
 void App_Init (void)
 {
 
@@ -79,14 +78,13 @@ void App_Init (void)
 	UARTconfig.RxFIFOEnable = true;
 	UARTconfig.TxFIFOEnable = true;
 	UARTconfig.loopBackEnable = false;
-	UART_Init(&UARTconfig);
+//	UART_Init(&UARTconfig);
 
 
 	MODEM_Config MODEMconfig;
 
 	MODEM_Init(&MODEMconfig);
 
-	MODEM_Init(&MODEMconfig);
 
 	//sysTickInit();
 	//pinMode(PIN_SW2,INPUT);
@@ -149,9 +147,9 @@ void App_Run (void)
 		}
 	}*/
 
-	static uint8_t rxByte;
-	if(UART_ReceiveByte(&rxByte))
-		MODEM_SendData(rxByte);
+	//static uint8_t rxByte;
+	//if(UART_ReceiveByte(&rxByte))
+	//	MODEM_SendData(rxByte);
 
 /*
 // Mas o menos asi seria el main loop

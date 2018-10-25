@@ -13,6 +13,8 @@
 
 
 #define BUS_CLOCK 50000000
+#define SAMPLE_FREQ 13200
+
 #define N_SAMPLE (256)
 #define F1 (1100)
 #define F2 (2200)
@@ -181,7 +183,7 @@ void MODEM_Init(MODEM_Config * config)
 	DMATransfer.sourceLastAdjust = -1*sizeof(signal);
 	DMATransfer.destinationLastAdjust = 0;
 	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
-	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
+	//DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
 	 // Configure DMA1 to copy from ADC to buffer
 	 DMAMUX_SetSource(1,DMAMUX_ADC0);
@@ -201,7 +203,7 @@ void MODEM_Init(MODEM_Config * config)
 
 	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
 	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
-	 DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
+	 //DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
 /*
 
 	DAC_Init(DAC_0,DAC_VREF_2);
@@ -223,22 +225,21 @@ void MODEM_Init(MODEM_Config * config)
 	PIT_SetTimerIntrruptHandler(PIT_CHNL_1,&modulate, NULL);
 	PIT_TimerEnable(PIT_CHNL_1, true);
 */
+	// Init ADC
 	ADC_Init(ADC_0);
 	ADC_setHardwareTrigger(ADC_0);
-	//ADC_enableInterrupts(ADC_0);
+	ADC_enableInterrupts(ADC_0);
 
+	// PDB module to trigger ADC periodically
 	PDB_Config PDBconfig;
-	PDBconfig.MODValue = 3788;
-	PDBconfig.enableContinuousMode = true;
 	PDB_GetDefaultConfig(&PDBconfig);
+	PDBconfig.MODValue = ((BUS_CLOCK/SAMPLE_FREQ)+0.5);
 	PDB_Init(&PDBconfig);
 
-	PDB_EnableADCTrigger();
-	//PDB_EnableInterrupts(0);
-
-	PDB_SetChannelDelay(0, 0, 1500);
-	PDB_LoadValues();
-	PDB_Trigger();
+	PDB_SetADCTriggerDelay(PDB_Channel0,PDB_PreTrigger0, 1500);
+	PDB_EnableADCTrigger(PDB_Channel0,PDB_PreTrigger0,true);
+	PDB_DoLoadValues();
+	PDB_SoftwareTrigger();
 
 }
 

@@ -70,7 +70,8 @@ void ADC_setHardwareTrigger(ADC_Instance n)
 	ADCs[n]->SC2 |=  ADC_SC2_ADTRG(1);
 }
 
-void ADC0_IRQHandler(void){
+void ADC0_IRQHandler(void)
+{
 
 	uint32_t test = ADCs[0]->SC2, test2 = ADCs[0]->SC3, test3 = ADCs[0]->R[0];
 	digitalToggle(PORTNUM2PIN(PC,5));
