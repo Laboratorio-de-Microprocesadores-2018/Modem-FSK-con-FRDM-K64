@@ -100,7 +100,7 @@ void App_Init (void)
 
 	MODEM_Init();
 
-	sysTickInit();
+	//sysTickInit();
 	pinMode(PIN_SW2,INPUT);
 	pinMode(PIN_LED_GREEN,OUTPUT);
 
@@ -113,7 +113,7 @@ static uint64_t lastDebounceTime;
 
 void App_Run (void)
 {
-
+/*
 	if((millis()-lastDebounceTime)>=500)
 	{
 		lastDebounceTime = millis();
@@ -158,8 +158,6 @@ void App_Run (void)
 	}*/
 
 
-
-
 /*
 // Mas o menos asi seria el main loop
 	UartRxLen = sizeof(UartRxBuffer);
@@ -175,5 +173,6 @@ void App_Run (void)
 	}*/
 	/*if(MODEM_ReceiveData(ModemRxBuffer,&ModemRxLen))
 		UART_SendData(ModemRxBuffer,ModemRxLen);*/
+
 }
 
