@@ -129,7 +129,11 @@ bool FTM_SetupPwm(FTM_Instance 	instance, FTM_PwmConfig * config)
 	FTMs[instance]->SC |= FTM_SC_CLKS(clkSource);
 	return true; //cambiar
 }
-
+uint32_t FTM_GetCnVAddress(FTM_Instance instance,FTM_Channel channel)
+{
+	return &(FTMs[instance]->CONTROLS[channel].CnV);
+}
+//
 
 void FTM_EnableOverflowInterrupt(FTM_Instance instance)
 {
@@ -140,6 +144,12 @@ void FTM_DisableOverflowInterrupt(FTM_Instance instance)
 {
 	FTMs[instance]->SC &= ~FTM_SC_TOIE_MASK;
 }
+
+uint16_t FTM_GetModValue(FTM_Instance instance)
+{
+	return (uint16_t) FTMs[instance]->MOD;
+}
+
 
 void FTM0_IRQHandler(void)
 {

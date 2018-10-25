@@ -1,12 +1,15 @@
 #include "Modem.h"
 #include "math.h"
 #include "SysTick.h"
+#include "ADC.h"
 #include "DAC.h"
 #include "GPIO.h"
 #include "DMAMUX.h"
 #include "DMA.h"
 #include "PIT.h"
+#include "PDB.h"
 #include "stdlib.h"
+
 
 
 #define BUS_CLOCK 50000000
@@ -46,6 +49,12 @@ static uint16_t ADCSamples[11];
 static uint8_t inputBytes[10];
 
 
+void modulate(void * data);
+//void deModulate(void);
+//bool FSKLPFilter(uint8_t m[SAMPLE_NUM], uint8_t d[SAMPLE_NUM]);
+//uint8_t convolution(uint8_t x[],uint8_t h[]);
+
+
 #define MEASURE_CPU_TIME
 #ifdef MEASURE_CPU_TIME
 	#define MEASURE_CPU_TIME_PORT PORTC
@@ -76,7 +85,66 @@ void modulate(void * data)
 }
 
 
-void MODEM_Init(MODEM_Config * config)
+/*
+void deModulate(void)
+{
+	uint8_t m[SAMPLE_NUM];
+	k = ceil((446e-6)/(1/fs));
+	for(int i = 0; i<n; i++)
+	{
+		m(i) =  x(i) * x(i-k);
+	}
+	err = FSKLPFilter(m, h, d);
+	if(~err)
+	{
+		comparator(d,out);
+	}else
+	{
+		return;
+	}
+
+
+}
+
+bool FSKLPFilter(uint8_t m[SAMPLE_NUM], uint8_t d[SAMPLE_NUM])
+{
+	for(int i = 0; i<SAMPLE_NUM; i++)
+	{
+		d(i) = convolution(x, h);
+	}
+}
+
+uint8_t convolution(uint8_t x[],uint8_t h[])
+{
+	uint8_t y = 0;
+	if(sizeof(x) == sizeof(h))
+	{
+		err = false;
+		n = sizeof(h);
+		for (int i=0; i<n; i++)
+			y = y + x(i)*h(n - i);
+	}
+	else{
+		err = true;
+	}
+	return y;
+}
+
+void comparator(uint8_t x[SAMPLE_NUM], uint8_t out[BITS_NUM])
+{
+	for(int i=0; i<SAMPLE_NUM; i++)
+	{
+	    uint8_t newVal = x(i);
+	    if (newVal > HYSTERESIS)
+	        out(i) = 1;
+	    else if (newVal < -HYSTERESIS)
+	        out(i) = 0;
+	}
+}
+
+*/
+
+void MODEM_Init()
 {
 #ifdef MEASURE_CPU_TIME
 	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
@@ -116,28 +184,24 @@ void MODEM_Init(MODEM_Config * config)
 	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
 	 // Configure DMA1 to copy from ADC to buffer
-
-	 DMAMUX_Init();
 	 DMAMUX_SetSource(1,DMAMUX_ADC0);
 
-	// DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
+	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
 	 DMATransfer.sourceOffset = 0;
 	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
-	 DMATransfer.sourceLastAdjust = 0;
 
 	 DMATransfer.destinationAddress = (uint32_t)ADCSamples;
 	 DMATransfer.destinationOffset = 2;
 	 DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
-	 DMATransfer.destinationLastAdjust = -1*sizeof(ADCSamples);
 
 	 DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
 	 DMATransfer.minorLoopBytes = 2;
-
+	 DMATransfer.majorLoopAdjust = -1*sizeof(ADCSamples);
 
 	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
 	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
 	 DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
-
+/*
 
 	DAC_Init(DAC_0,DAC_VREF_2);
 	DAC_Enable(DAC_0);
@@ -157,6 +221,23 @@ void MODEM_Init(MODEM_Config * config)
 	PIT_TimerIntrruptEnable(PIT_CHNL_1, true);
 	PIT_SetTimerIntrruptHandler(PIT_CHNL_1,&modulate, NULL);
 	PIT_TimerEnable(PIT_CHNL_1, true);
+*/
+	ADC_Init(ADC_0);
+	ADC_setHardwareTrigger(ADC_0);
+	//ADC_enableInterrupts(ADC_0);
+
+	PDB_Config config;
+	config.MODValue = 3788;
+	config.enableContinuousMode = true;
+	PDB_GetDefaultConfig(&config);
+	PDB_Init(&config);
+
+	PDB_EnableADCTrigger();
+	//PDB_EnableInterrupts(0);
+
+	PDB_SetChannelDelay(0, 0, 1500);
+	PDB_LoadValues();
+	PDB_Trigger();
 
 }
 

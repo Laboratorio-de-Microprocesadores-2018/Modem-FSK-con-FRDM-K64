@@ -48,27 +48,30 @@ typedef enum {
   PDB_TRIGGER_SOFTWARE = 15U
 }PDB_TriggerSource;
 
+typedef enum{PDB_PreTrigger0, PDB_PreTrigger1}PDB_PreTrigger;
+typedef enum{PDB_Channel0, PDB_Channel1}PDB_Channel;
 typedef struct{
 	PDB_LoadValueMode loadValueMode;
 	PDB_Prescaler prescalerDivider;
 	PDB_MultiplicationFactor multiplicationFactor;
 	PDB_TriggerSource triggerInputSource;
 	bool enableContinuousMode;
+	uint16_t MODValue;
 }PDB_Config;
 
 void PDB_GetDefaultConfig(PDB_Config * config);
 
 void PDB_Init(PDB_Config * config);
 
-void PDB_Deinit();
+void PDB_Deinit(void);
 
-void PDB_Enable();
+void PDB_Enable(void);
 
-void PDB_Disable();
+void PDB_Disable(void);
 
-void PDB_Trigger();
+void PDB_Trigger(void);
 
-void PDB_LoadValues();
+void PDB_LoadValues(void);
 
 void PDB_EnableDMA(bool enable);
 
@@ -76,21 +79,23 @@ void PDB_EnableInterrupts(uint32_t mask);
 
 void PDB_DisableInterrupts(uint32_t mask);
 
-uint32_t PDB_GetStatusFlags();
+uint32_t PDB_GetStatusFlags(void);
 
 void PDB_ClearStatusFlags(uint32_t mask);
+
+void PDB_SetChannelDelay(PDB_PreTrigger m, PDB_Channel n,  uint32_t CHDelay);
 
 /**
  * @brief Specifies the period of the counter.
  * When the counter reaches this value, it will be reset back to zero.
  * If the PDB is in Continuous mode, the count begins anew.
  */
-void PDB_SetModulusValue(uint32_t value);
+void PDB_SetModulusValue(uint16_t value);
 
 /**
  *
  */
-uint32_t PDB_GetCounterValue();
+uint32_t PDB_GetCounterValue(void);
 
 /**
  *
@@ -105,6 +110,7 @@ void PDB_SetDacTriggerPeriod(uint16_t value);
 /**
  *
  */
-void PDB_EnableDacTriger(bool enable);
+void PDB_EnableDACTrigger(bool enable);
+void PDB_EnableADCTrigger(void);
 
 #endif /* PDB_H_ */

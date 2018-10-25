@@ -384,6 +384,7 @@ void recieveData(void)
 
 	uint8_t debugRegister;
 	debugRegister = UART0->S1;
+
 	if(isFull(&recieveBuffer) == false)
 	{
 		int FIFOCount = UART0->RCFIFO;

@@ -18,6 +18,16 @@
 
 #include "GPIO.h"
 #include "SysTick.h"
+
+
+#include "math.h"
+#include "SysTick.h"
+#include "DAC.h"
+#include "DMAMUX.h"
+#include "DMA.h"
+#include "PIT.h"
+#include "stdlib.h"
+#include "FTM.h"
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
@@ -50,8 +60,14 @@ static uint8_t UartRxBuffer[10];
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
 
+//uint8_t srcARR[] = {1,2,3,4,5};
+//uint8_t destARR[5]={0,0,0,0,0};
 
 
+#define BIT_FREC 1200
+#define PWM_FREC 98400
+uint16_t CnVTableL[BIT_FREC/PWM_FREC];
+uint16_t CnVTableH[BIT_FREC/PWM_FREC];
 void App_Init (void)
 {
 
@@ -65,7 +81,10 @@ void App_Init (void)
 	UARTconfig.loopBackEnable = false;
 	UART_Init(&UARTconfig);
 
+
 	MODEM_Config MODEMconfig;
+
+	MODEM_Init(&MODEMconfig);
 
 	MODEM_Init(&MODEMconfig);
 
@@ -76,8 +95,11 @@ void App_Init (void)
 }
 
 
-//static int currState,lastState;
-//static uint64_t lastDebounceTime;
+
+
+
+static int currState,lastState;
+static uint64_t lastDebounceTime;
 
 
 void App_Run (void)
@@ -131,6 +153,20 @@ void App_Run (void)
 	if(UART_ReceiveByte(&rxByte))
 		MODEM_SendData(rxByte);
 
+/*
+// Mas o menos asi seria el main loop
+	UartRxLen = sizeof(UartRxBuffer);
+	ModemRxLen = sizeof(ModemRxBuffer);
+
+	if(UART_RecieveData(UartRxBuffer,&UartRxLen))
+	{
+		for(int i=0; i<UartRxLen; i++)
+		{
+			MODEM_SendData(UartRxBuffer[i]);
+			UART_SendData(UartRxBuffer,UartRxLen);
+		}
+	}*/
+	/*if(MODEM_ReceiveData(ModemRxBuffer,&ModemRxLen))
+		UART_SendData(ModemRxBuffer,ModemRxLen);*/
 
 }
-
