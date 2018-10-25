@@ -1,27 +1,52 @@
-/*
- * ADC.h
- *
- *  Created on: Oct 17, 2018
- *      Author: sebas
- */
-
 #ifndef ADC_H_
 #define ADC_H_
 
 #include "stdint.h"
 
-typedef enum {ADC_0,
-			  ADC_1}ADC_Instance;
+typedef enum {ADC_0, ADC_1}ADC_Instance;
+typedef enum {ADC_ChannelA,ADC_ChannelB} ADC_Channel;
 
 /* ADC_SC1 enums*/
 typedef enum{ADC_INTERRUPTS_DISABLED, ADC_INTERRUPTS_ENABLED}ADC_InterruptEnable;
-typedef enum{ADC_SINGLE_ENDED, ADC_DIFF}ADC_SignalType;
-typedef enum{ADC_IN_DAD0, ADC_IN_DAD1, ADC_IN_DAD2, ADC_IN_DAD3,
-			ADC_IN_AD4, ADC_IN_AD5, ADC_IN_AD6, ADC_IN_AD7, ADC_IN_AD8,
-			ADC_IN_AD9,	ADC_IN_AD10, ADC_IN_AD11, ADC_IN_AD12,
-			ADC_IN_AD13, ADC_IN_AD14, ADC_IN_AD15, ADC_IN_AD16,
-			ADC_IN_AD17, ADC_IN_AD18, ADC_IN_AD19, ADC_IN_AD20,
-			ADC_IN_AD21, ADC_IN_AD22, ADC_IN_AD23}ADC_InChannel;
+typedef enum{ADC_SINGLE_ENDED, ADC_DIFFERENTIAL}ADC_SignalType;
+typedef enum{ADC_IN_DADP0,
+			ADC_IN_DADP1,
+			ADC_IN_DADP2,
+			ADC_IN_DADP3,
+			ADC_IN_AD4,
+			ADC_IN_AD5,
+			ADC_IN_AD6,
+			ADC_IN_AD7,
+			ADC_IN_AD8,
+			ADC_IN_AD9,
+			ADC_IN_AD10,
+			ADC_IN_AD11,
+			ADC_IN_AD12,
+			ADC_IN_AD13,
+			ADC_IN_AD14,
+			ADC_IN_AD15,
+			ADC_IN_AD16,
+			ADC_IN_AD17,
+			ADC_IN_AD18,
+			ADC_IN_AD19,
+			ADC_IN_AD20,
+			ADC_IN_AD21,
+			ADC_IN_AD22,
+			ADC_IN_AD23,
+			ADC_reserved0,
+			ADC_reserved1,
+			ADC_TempSensor,
+			ADC_BandGap,
+			ADC_reserved2,
+			ADC_Vrefsh,
+			ADC_Vrefsl,
+			ADC_Disabled}ADC_InputSignal;
+
+/* ADC_SC2 enums*/
+typedef enum{ADC_SOFTWARE_TRIGGER, ADC_HARDWARE_TRIGGER}ADC_Trigger;
+typedef enum{ADC_DMA_DISABLED, ADC_DMA_ENABLED}ADC_DMAEnable;
+typedef enum{ADC_REFV, AD_ALTV}ADC_VRefSel;
+
 
 /* ADC_CFG1 enums*/
 typedef enum{ADC_NORMAL_POWER, ADC_LOW_POWER}ADC_PowerConsumption;
@@ -30,19 +55,8 @@ typedef enum{ADC_SHORT_TIME, ADC_LONG_TIME}ADC_ConversionTime;
 typedef enum{ADC_8OR9_BITS, ADC_12OR13_BITS, ADC_10OR11_BITS, ADC_16_BITS}ADC_Resolution;
 typedef enum{ADC_BUS_CLK, ADC_HALF_BUS_CLK, ADC_ALTERNATE_CLK, ADC_ASYNCHRONOUS_CLK}ADC_InClk;
 
-/* ADC_SC2 enums*/
-typedef enum{ADC_SOFTWARE_TRIGGER, ADC_HARDWARE_TRIGGER}ADC_Trigger;
-typedef enum{ADC_DMA_DISABLED, ADC_DMA_ENABLED}ADC_DMAEnable;
-typedef enum{ADC_REFV, AD_ALTV}ADC_VRefSel;
-
 
 typedef struct{
-
-	/**< ADC_SC1. */
-	ADC_InterruptEnable InterruptsEnable;
-	ADC_SignalType SignalType;
-	ADC_InChannel InputChannel;
-
 	/**< ADC_CFG1. */
 	ADC_PowerConsumption PowerConsumtion;
 	ADC_ClkDiv ClkDivider;
@@ -56,14 +70,32 @@ typedef struct{
 	ADC_VRefSel VoltageReference;
 }ADC_Config;
 
-void ADC_Init(ADC_Instance n, ADC_Config * config);
-
-uint32_t ADC_GetDataResultAddress(ADC_Instance n);
-
-void ADC_EnableContinuousConv(ADC_Instance n);
-void ADC_EnableInterrupts(ADC_Instance n);
-void ADC_SetHardwareTrigger(ADC_Instance n);
+typedef struct
+{
+	/**< ADC_SC1. */
+	ADC_InterruptEnable InterruptsEnable;
+	ADC_SignalType SignalType;
+	ADC_InputSignal InputChannel;
+}ADC_ChannelConfig;
 
 void ADC_GetDefaultConfig(ADC_Config * config);
+
+void ADC_Init(ADC_Instance n, ADC_Config * config);
+
+void ADC_GetDefaultChannelConfig(ADC_ChannelConfig * config);
+
+void ADC_SetChannelConfig(ADC_Instance n,ADC_Channel m,ADC_ChannelConfig * config);
+
+/**
+ * @brief Return conversion value
+ */
+uint16_t ADC_GetConversionResult(ADC_Instance n,ADC_Channel m);
+
+uint32_t ADC_GetDataResultAddress(ADC_Instance n,ADC_Channel m);
+
+void ADC_EnableContinuousConv(ADC_Instance n);
+void ADC_EnableInterrupts(ADC_Instance n,ADC_Channel m);
+void ADC_SetHardwareTrigger(ADC_Instance n);
+
 
 #endif /* ADC_H_ */
