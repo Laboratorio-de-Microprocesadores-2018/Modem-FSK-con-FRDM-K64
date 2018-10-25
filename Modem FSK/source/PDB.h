@@ -49,7 +49,11 @@ typedef enum {
 }PDB_TriggerSource;
 
 typedef enum{PDB_PreTrigger0, PDB_PreTrigger1}PDB_PreTrigger;
+
+typedef enum{PDB_DACTrigger0,PDB_DACTrigger1}PDB_DACTrigger;
+
 typedef enum{PDB_Channel0, PDB_Channel1}PDB_Channel;
+
 typedef struct{
 	PDB_LoadValueMode loadValueMode;
 	PDB_Prescaler prescalerDivider;
@@ -59,31 +63,61 @@ typedef struct{
 	uint16_t MODValue;
 }PDB_Config;
 
+/**
+ *
+ */
 void PDB_GetDefaultConfig(PDB_Config * config);
 
+/**
+ *
+ */
 void PDB_Init(PDB_Config * config);
 
+/**
+ *
+ */
 void PDB_Deinit(void);
 
-void PDB_Enable(void);
-
+/**
+ *
+ */
 void PDB_Disable(void);
 
-void PDB_Trigger(void);
+/**
+ *
+ */
+void PDB_Enable(void);
 
-void PDB_LoadValues(void);
+/**
+ *
+ */
+void PDB_SoftwareTrigger(void);
 
+/**
+ *
+ */
+void PDB_DoLoadValues(void);
+
+/**
+ *
+ */
 void PDB_EnableDMA(bool enable);
 
+/**
+ *
+ */
 void PDB_EnableInterrupts(uint32_t mask);
 
+/**
+ *
+ */
 void PDB_DisableInterrupts(uint32_t mask);
 
 uint32_t PDB_GetStatusFlags(void);
 
 void PDB_ClearStatusFlags(uint32_t mask);
 
-void PDB_SetChannelDelay(PDB_PreTrigger m, PDB_Channel n,  uint32_t CHDelay);
+void PDB_SetADCTriggerDelay(PDB_Channel n, PDB_PreTrigger m,  uint32_t delay);
 
 /**
  * @brief Specifies the period of the counter.
@@ -100,17 +134,20 @@ uint32_t PDB_GetCounterValue(void);
 /**
  *
  */
-void PDB_SetCounterDelayValue(uint32_t value);
+void PDB_SetInterruptDelay(uint32_t delay);
 
 /**
  *
  */
-void PDB_SetDacTriggerPeriod(uint16_t value);
+void PDB_SetDACTriggerDelay(PDB_DACTrigger n,uint16_t delay);
 
 /**
  *
  */
-void PDB_EnableDACTrigger(bool enable);
-void PDB_EnableADCTrigger(void);
+void PDB_EnableDACTrigger(PDB_DACTrigger n,bool enable);
+
+
+void PDB_SetADCTriggerDelay(PDB_Channel n, PDB_PreTrigger m,  uint32_t delay);
+void PDB_EnableADCTrigger(PDB_Channel n, PDB_PreTrigger m, bool enable);
 
 #endif /* PDB_H_ */
