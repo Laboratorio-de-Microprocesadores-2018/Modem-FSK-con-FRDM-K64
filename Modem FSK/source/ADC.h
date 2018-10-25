@@ -14,28 +14,56 @@ typedef enum {ADC_0,
 			  ADC_1}ADC_Instance;
 
 /* ADC_SC1 enums*/
-typedef enum{DAD0, DAD1, DAD2, DAD3, AD4, AD5, AD6, AD7, AD8, AD9,
-			AD10, AD11, AD12, AD13, AD14, AD15, AD16, AD17, AD18, AD19,
-			AD20, AD21, AD22, AD23}ADC_Channel;
+typedef enum{ADC_INTERRUPTS_DISABLED, ADC_INTERRUPTS_ENABLED}ADC_InterruptEnable;
+typedef enum{ADC_SINGLE_ENDED, ADC_DIFF}ADC_SignalType;
+typedef enum{ADC_IN_DAD0, ADC_IN_DAD1, ADC_IN_DAD2, ADC_IN_DAD3,
+			ADC_IN_AD4, ADC_IN_AD5, ADC_IN_AD6, ADC_IN_AD7, ADC_IN_AD8,
+			ADC_IN_AD9,	ADC_IN_AD10, ADC_IN_AD11, ADC_IN_AD12,
+			ADC_IN_AD13, ADC_IN_AD14, ADC_IN_AD15, ADC_IN_AD16,
+			ADC_IN_AD17, ADC_IN_AD18, ADC_IN_AD19, ADC_IN_AD20,
+			ADC_IN_AD21, ADC_IN_AD22, ADC_IN_AD23}ADC_InChannel;
 
 /* ADC_CFG1 enums*/
-typedef enum{LOWRES, MIDRES, HIGHRES, MESSIRES}ADC_Resolution;
-typedef enum{NODIV, DIV2, DIV4, DIV8}ClkDiv;
-typedef enum{ADICLK_BUS, ADICLK_BUS2, ADICLK_ALT, ADICLK_ASYNC}ADIClk;
+typedef enum{ADC_NORMAL_POWER, ADC_LOW_POWER}ADC_PowerConsumption;
+typedef enum{NODIV, DIV2, DIV4, DIV8}ADC_ClkDiv;
+typedef enum{ADC_SHORT_TIME, ADC_LONG_TIME}ADC_ConversionTime;
+typedef enum{ADC_8OR9_BITS, ADC_12OR13_BITS, ADC_10OR11_BITS, ADC_16_BITS}ADC_Resolution;
+typedef enum{ADC_BUS_CLK, ADC_HALF_BUS_CLK, ADC_ALTERNATE_CLK, ADC_ASYNCHRONOUS_CLK}ADC_InClk;
 
 /* ADC_SC2 enums*/
-typedef enum{AD_REFV, AD_ALTV}RefSel;
+typedef enum{ADC_SOFTWARE_TRIGGER, ADC_HARDWARE_TRIGGER}ADC_Trigger;
+typedef enum{ADC_DMA_DISABLED, ADC_DMA_ENABLED}ADC_DMAEnable;
+typedef enum{ADC_REFV, AD_ALTV}ADC_VRefSel;
 
-typedef struct
-{
-	ADC_Resolution
 
+typedef struct{
+
+	/**< ADC_SC1. */
+	ADC_InterruptEnable InterruptsEnable;
+	ADC_SignalType SignalType;
+	ADC_InChannel InputChannel;
+
+	/**< ADC_CFG1. */
+	ADC_PowerConsumption PowerConsumtion;
+	ADC_ClkDiv ClkDivider;
+	ADC_ConversionTime ConversionTime;
+	ADC_Resolution Resolution;
+	ADC_InClk InternalClk;
+
+	/**< ADC_SC2. */
+	ADC_Trigger Trigger;
+	ADC_DMAEnable DMAEnable;
+	ADC_VRefSel VoltageReference;
 }ADC_Config;
 
-void ADC_Init(ADC_Instance n);
+void ADC_Init(ADC_Instance n, ADC_Config * config);
+
 uint32_t ADC_GetDataResultAddress(ADC_Instance n);
-void ADC_enableContinuousConv(ADC_Instance n);
-void ADC_enableInterrupts(ADC_Instance n);
-void ADC_setHardwareTrigger(ADC_Instance n);
+
+void ADC_EnableContinuousConv(ADC_Instance n);
+void ADC_EnableInterrupts(ADC_Instance n);
+void ADC_SetHardwareTrigger(ADC_Instance n);
+
+void ADC_GetDefaultConfig(ADC_Config * config);
 
 #endif /* ADC_H_ */
