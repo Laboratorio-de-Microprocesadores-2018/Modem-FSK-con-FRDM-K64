@@ -2,11 +2,13 @@
 
 #include "math.h"
 #include "SysTick.h"
+#include "ADC.h"
 #include "DAC.h"
 #include "GPIO.h"
 #include "DMAMUX.h"
 #include "DMA.h"
 #include "PIT.h"
+#include "PDB.h"
 #include "stdlib.h"
 
 
@@ -48,6 +50,12 @@ static uint16_t ADCSamples[11];
 static uint8_t inputBytes[10];
 
 
+void modulate(void * data);
+//void deModulate(void);
+//bool FSKLPFilter(uint8_t m[SAMPLE_NUM], uint8_t d[SAMPLE_NUM]);
+//uint8_t convolution(uint8_t x[],uint8_t h[]);
+
+
 #define MEASURE_CPU_TIME
 #ifdef MEASURE_CPU_TIME
 	#define MEASURE_CPU_TIME_PORT PORTC
@@ -77,7 +85,9 @@ void modulate(void * data)
 	CLEAR_TEST_PIN;
 }
 
-void deModulate()
+
+/*
+void deModulate(void)
 {
 	uint8_t m[SAMPLE_NUM];
 	k = ceil((446e-6)/(1/fs));
@@ -133,6 +143,8 @@ void comparator(uint8_t x[SAMPLE_NUM], uint8_t out[BITS_NUM])
 	}
 }
 
+*/
+
 void MODEM_Init()
 {
 #ifdef MEASURE_CPU_TIME
@@ -172,8 +184,6 @@ void MODEM_Init()
 	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
 	 // Configure DMA1 to copy from ADC to buffer
-
-	 DMAMUX_Init();
 	 DMAMUX_SetSource(1,DMAMUX_ADC0);
 
 	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
@@ -191,7 +201,7 @@ void MODEM_Init()
 	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
 	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
 	 DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
-
+/*
 
 	DAC_Init(DAC_0,DAC_VREF_2);
 	DAC_Enable(DAC_0);
@@ -211,6 +221,23 @@ void MODEM_Init()
 	PIT_TimerIntrruptEnable(PIT_CHNL_1, true);
 	PIT_SetTimerIntrruptHandler(PIT_CHNL_1,&modulate, NULL);
 	PIT_TimerEnable(PIT_CHNL_1, true);
+*/
+	ADC_Init(ADC_0);
+	ADC_setHardwareTrigger(ADC_0);
+	//ADC_enableInterrupts(ADC_0);
+
+	PDB_Config config;
+	config.MODValue = 3788;
+	config.enableContinuousMode = true;
+	PDB_GetDefaultConfig(&config);
+	PDB_Init(&config);
+
+	PDB_EnableADCTrigger();
+	//PDB_EnableInterrupts(0);
+
+	PDB_SetChannelDelay(0, 0, 1500);
+	PDB_LoadValues();
+	PDB_Trigger();
 
 }
 
