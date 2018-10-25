@@ -1,5 +1,4 @@
 #include "Modem.h"
-
 #include "math.h"
 #include "SysTick.h"
 #include "ADC.h"
@@ -179,7 +178,8 @@ void MODEM_Init()
 	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
 	DMATransfer.majorLoopCounts = N_SAMPLE;
 	DMATransfer.minorLoopBytes = 2;
-	DMATransfer.majorLoopAdjust = -1*sizeof(signal);
+	DMATransfer.sourceLastAdjust = -1*sizeof(signal);
+	DMATransfer.destinationLastAdjust = 0;
 	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
 	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 

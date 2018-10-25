@@ -104,7 +104,8 @@ typedef struct
     int16_t destinationOffset;
     uint16_t minorLoopBytes;
     uint32_t majorLoopCounts;
-    uint32_t majorLoopAdjust;
+    uint32_t sourceLastAdjust;
+    uint32_t destinationLastAdjust;
 } DMA_TransferConfig;
 
 typedef struct

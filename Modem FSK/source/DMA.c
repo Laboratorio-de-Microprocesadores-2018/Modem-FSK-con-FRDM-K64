@@ -3,7 +3,7 @@
 #include "MK64F12.h"
 #include "MK64F12_features.h"
 
-static int irqTable[]=DMA_CHN_IRQS;
+static IRQn_Type irqTable[]=DMA_CHN_IRQS;
 
 void DMA_GetDefaultConfig(DMA_Config * config)
 {
@@ -45,8 +45,9 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 
 	DMA0->TCD[channel].NBYTES_MLNO = config->minorLoopBytes;
 
-	DMA0->TCD[channel].SLAST = config->majorLoopAdjust;
-	DMA0->TCD[channel].DLAST_SGA=0x00;
+	DMA0->TCD[channel].SLAST = config->sourceLastAdjust;
+	DMA0->TCD[channel].DLAST_SGA=config->destinationLastAdjust;
+
 
 	DMA0->TCD[channel].CITER_ELINKNO = DMA_CITER_ELINKNO_CITER(config->majorLoopCounts);
 	DMA0->TCD[channel].BITER_ELINKNO = DMA_BITER_ELINKNO_BITER(config->majorLoopCounts);
@@ -92,3 +93,4 @@ void DMA_DisableChannelRequest (uint32_t channel)
 
 	DMA0->ERQ &= ~(1<<channel);
 }
+
