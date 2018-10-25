@@ -14,7 +14,6 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include "Modem.h"
-
 #include "UART.h"
 
 #include "GPIO.h"
@@ -36,84 +35,54 @@
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 static uint8_t UartRxBuffer[10];
-static uint8_t UartRxLen;
-static uint8_t ModemRxBuffer[10];
-static uint8_t ModemRxLen;
+//static uint8_t UartRxLen;
+//static uint8_t ModemRxBuffer[10];
+//static uint8_t ModemRxLen;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
 /////////////////////////////////////////////////////////////////////////////////
 
 
-void DAC0_IRQHandler()
-{
-	//digitalToggle(PORTNUM2PIN(PC,10));
 
-	//static uint8_t index = 0;
-
-	//DAC_WriteValue(DAC_0,signal[index++]);
-
-	/*if(DAC_GetFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP)==true)
-	{
-		for(int n=DAC_BUFFER_SIZE-DAC_WATERMARK-1;n<DAC_BUFFER_SIZE; n++)
-			DAC_SetBufferValue (DAC_0, n, signal[index+n]);
-
-		index = (index + DAC_BUFFER_SIZE)%N_SAMPLE;
-
-		DAC_ClearFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP);
-	}
-	else if(DAC_GetFlag(DAC_0,DAC_INTERRUPT_WATERMARK)==true)
-	{
-		for(int n=0;n<DAC_BUFFER_SIZE-DAC_WATERMARK-1; n++)
-				DAC_SetBufferValue (DAC_0, n, signal[index+n]);
-
-		DAC_ClearFlag(DAC_0,DAC_INTERRUPT_WATERMARK);
-	}
-	digitalToggle(PORTNUM2PIN(PC,10));*/
-
-	/*for(int n=0;n<DAC_BUFFER_SIZE; n++)
-		DAC_SetBufferValue (DAC_0, n, signal[index+n]);
-
-	index = (index + DAC_BUFFER_SIZE)%N_SAMPLE;
-
-	// Reset pointer
-	//DAC_SetBufferPointer (DAC_0,0);
-
-	DAC_ClearFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP);*/
-
-
-}
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
 
 
-uint8_t srcARR[] = {1,2,3,4,5};
-uint8_t destARR[5]={0,0,0,0,0};
-int debugFlag=0;
 
 void App_Init (void)
 {
 
-	UARTInit();
+	UART_Config UARTconfig;
+	UARTconfig.baud = UART_Baud_1200_Bps;
+	UARTconfig.enableRx = true;
+	UARTconfig.enableTx = true;
+	UARTconfig.parityMode = UART_ParityOdd;//UART_ParityOdd;// UART_ParityDisabled;
+	UARTconfig.RxFIFOEnable = true;
+	UARTconfig.TxFIFOEnable = true;
+	UARTconfig.loopBackEnable = false;
+	UART_Init(&UARTconfig);
 
-	MODEM_Init();
+	MODEM_Config MODEMconfig;
 
-	sysTickInit();
-	pinMode(PIN_SW2,INPUT);
-	pinMode(PIN_LED_GREEN,OUTPUT);
+	MODEM_Init(&MODEMconfig);
+
+	//sysTickInit();
+	//pinMode(PIN_SW2,INPUT);
+	//pinMode(PIN_LED_GREEN,OUTPUT);
 
 }
 
 
-static int currState,lastState;
-static uint64_t lastDebounceTime;
+//static int currState,lastState;
+//static uint64_t lastDebounceTime;
 
 
 void App_Run (void)
 {
-
+/*
 	if((millis()-lastDebounceTime)>=500)
 	{
 		lastDebounceTime = millis();
@@ -132,6 +101,7 @@ void App_Run (void)
 		MODEM_SendData(0x04);
 		digitalToggle(PIN_LED_GREEN);
 	}
+*/
 
 	/*
 	static int debounced;
@@ -157,23 +127,10 @@ void App_Run (void)
 		}
 	}*/
 
+	static uint8_t rxByte;
+	if(UART_ReceiveByte(&rxByte))
+		MODEM_SendData(rxByte);
 
 
-
-/*
-// Mas o menos asi seria el main loop
-	UartRxLen = sizeof(UartRxBuffer);
-	ModemRxLen = sizeof(ModemRxBuffer);
-
-	if(UART_RecieveData(UartRxBuffer,&UartRxLen))
-	{
-		for(int i=0; i<UartRxLen; i++)
-		{
-			MODEM_SendData(UartRxBuffer[i]);
-			UART_SendData(UartRxBuffer,UartRxLen);
-		}
-	}*/
-	/*if(MODEM_ReceiveData(ModemRxBuffer,&ModemRxLen))
-		UART_SendData(ModemRxBuffer,ModemRxLen);*/
 }
 
