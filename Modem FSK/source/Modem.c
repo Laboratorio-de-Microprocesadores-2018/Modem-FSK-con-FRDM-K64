@@ -61,7 +61,7 @@ static uint8_t inputBytes[10];
 
 void modulate(void * data)
 {
-	SET_TEST_PIN;
+	//SET_TEST_PIN;
 
 	// If no data in buffer, idle state is MARK
 	if(bufferEmpty)
@@ -72,7 +72,7 @@ void modulate(void * data)
 		tail = (tail + 1)%bufferSize;
 	}
 
-	CLEAR_TEST_PIN;
+	//CLEAR_TEST_PIN;
 }
 
 
@@ -149,7 +149,7 @@ void MODEM_Init(MODEM_Config * config)
 	PIT_Enable();
 
     PIT_SetTimerPeriod (PIT_CHNL_0, T1);
-	PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
+	//PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
 	PIT_TimerEnable(PIT_CHNL_0, true);
 
 	// Set periodic interrupt to modulate
