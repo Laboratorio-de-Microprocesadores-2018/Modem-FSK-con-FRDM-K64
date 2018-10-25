@@ -144,7 +144,7 @@ void comparator(uint8_t x[SAMPLE_NUM], uint8_t out[BITS_NUM])
 
 */
 
-void MODEM_Init()
+void MODEM_Init(MODEM_Config * config)
 {
 #ifdef MEASURE_CPU_TIME
 	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
@@ -189,14 +189,15 @@ void MODEM_Init()
 	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
 	 DMATransfer.sourceOffset = 0;
 	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+	 DMATransfer.sourceLastAdjust = 0;
 
 	 DMATransfer.destinationAddress = (uint32_t)ADCSamples;
 	 DMATransfer.destinationOffset = 2;
 	 DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+	 DMATransfer.destinationLastAdjust= -1*sizeof(ADCSamples);
 
 	 DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
 	 DMATransfer.minorLoopBytes = 2;
-	 DMATransfer.majorLoopAdjust = -1*sizeof(ADCSamples);
 
 	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
 	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
@@ -226,11 +227,11 @@ void MODEM_Init()
 	ADC_setHardwareTrigger(ADC_0);
 	//ADC_enableInterrupts(ADC_0);
 
-	PDB_Config config;
-	config.MODValue = 3788;
-	config.enableContinuousMode = true;
-	PDB_GetDefaultConfig(&config);
-	PDB_Init(&config);
+	PDB_Config PDBconfig;
+	PDBconfig.MODValue = 3788;
+	PDBconfig.enableContinuousMode = true;
+	PDB_GetDefaultConfig(&PDBconfig);
+	PDB_Init(&PDBconfig);
 
 	PDB_EnableADCTrigger();
 	//PDB_EnableInterrupts(0);
