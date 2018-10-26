@@ -90,10 +90,6 @@ static uint8_t outSamples[SAMPLES_BUFFER_SIZE];
 static uint16_t firstSample;
 static uint16_t timeIndex;
 
-typedef struct
-{
-
-};
 
 static uint16_t demodulationSampleCount;
 static MODEM_DemState demodulationState;
