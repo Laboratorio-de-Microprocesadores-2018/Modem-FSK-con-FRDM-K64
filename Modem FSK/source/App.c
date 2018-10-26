@@ -97,7 +97,7 @@ static uint64_t lastDebounceTime;
 
 void App_Run (void)
 {
-/*
+
 	static uint64_t time;
 	if((millis()-time)>=1000)
 	{
@@ -105,7 +105,7 @@ void App_Run (void)
 		PWMGen_SendData('A');
 	}
 
-*/
+
 
 	/*
 	static int debounced;
