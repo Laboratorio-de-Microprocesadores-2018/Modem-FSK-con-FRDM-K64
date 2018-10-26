@@ -35,6 +35,10 @@ typedef enum{ADC_SOFTWARE_TRIGGER, ADC_HARDWARE_TRIGGER}ADC_Trigger;
 typedef enum{ADC_DMA_DISABLED, ADC_DMA_ENABLED}ADC_DMAEnable;
 typedef enum{ADC_REFV, AD_ALTV}ADC_VRefSel;
 
+/* ADC_SC2 enums*/
+typedef enum{ADC_HARDWARE_AVG_ON, ADC_HARDWARE_AVG_OFF}ADC_HardwareAverage;
+typedef enum{ADC_4SAMPLES_AVG, ADC_8SAMPLES_AVG, ADC_16SAMPLES_AVG, ADC_32SAMPLES_AVG}ADC_AverageResolution;
+
 
 typedef struct{
 
@@ -54,6 +58,10 @@ typedef struct{
 	ADC_Trigger Trigger;
 	ADC_DMAEnable DMAEnable;
 	ADC_VRefSel VoltageReference;
+
+	/**< ADC_SC3. */
+	ADC_HardwareAverage HardwareAverage;
+	ADC_AverageResolution AverageResolution;
 }ADC_Config;
 
 void ADC_Init(ADC_Instance n, ADC_Config * config);
@@ -63,6 +71,7 @@ uint32_t ADC_GetDataResultAddress(ADC_Instance n);
 void ADC_EnableContinuousConv(ADC_Instance n);
 void ADC_EnableInterrupts(ADC_Instance n);
 void ADC_SetHardwareTrigger(ADC_Instance n);
+void ADC_SetAverage(ADC_Instance n, ADC_AverageResolution res);
 
 void ADC_GetDefaultConfig(ADC_Config * config);
 

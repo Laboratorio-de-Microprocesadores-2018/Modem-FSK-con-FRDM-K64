@@ -158,12 +158,14 @@ void MODEM_Init()
 		uint16_t s = sin((float)i/(N_SAMPLE)*2*M_PI)*2048+2047;
 		signal[i]= s;
 	}
-
+/*
 	DMA_Config DMAconfig;
 	DMA_GetDefaultConfig(&DMAconfig);
 	DMAconfig.enableDebugMode=false;
 	DMA_Init(&DMAconfig);
 	DMAMUX_Init();
+
+
 
     // Configure DMA0 to copy from sine table to DAC
 	DMAMUX_SetSource(DAC_DMA_CHANNEL,DMAMUX_AlwaysEnabled3);
@@ -183,28 +185,32 @@ void MODEM_Init()
 	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
 	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
-	 // Configure DMA1 to copy from ADC to buffer
-	 DMAMUX_SetSource(1,DMAMUX_ADC0);
 
-	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
-	 DMATransfer.sourceOffset = 0;
-	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
-
-	 DMATransfer.destinationAddress = (uint32_t)ADCSamples;
-	 DMATransfer.destinationOffset = 2;
-	 DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
-
-	 DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
-	 DMATransfer.minorLoopBytes = 2;
-	 DMATransfer.majorLoopAdjust = -1*sizeof(ADCSamples);
-
-	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
-	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
-	 DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
 /*
+	// Configure DMA1 to copy from ADC to buffer
+	DMAMUX_SetSource(1,DMAMUX_ADC0);
+
+	DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
+	DMATransfer.sourceOffset = 0;
+	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+
+	DMATransfer.destinationAddress = (uint32_t)ADCSamples;
+	DMATransfer.destinationOffset = 2;
+	DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+
+	DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
+	DMATransfer.minorLoopBytes = 2;
+	DMATransfer.majorLoopAdjust = -1*sizeof(ADCSamples);
+
+	DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
+	DMA_EnableChannelRequest(ADC_DMA_CHANNEL);
+	DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
+*/
+
+
 
 	DAC_Init(DAC_0,DAC_VREF_2);
-	DAC_Enable(DAC_0);
+	DAC_Enable(DAC_0);/*
 
 
 	PIT_Config PITConfig;
@@ -222,18 +228,19 @@ void MODEM_Init()
 	PIT_SetTimerIntrruptHandler(PIT_CHNL_1,&modulate, NULL);
 	PIT_TimerEnable(PIT_CHNL_1, true);
 */
-	ADC_Init(ADC_0);
-	ADC_setHardwareTrigger(ADC_0);
-	//ADC_enableInterrupts(ADC_0);
+
+	ADC_Config ADCConfiguration;
+	ADC_GetDefaultConfig(&ADCConfiguration);
+	ADC_Init(ADC_0, &ADCConfiguration);
+	ADC_SetHardwareTrigger(ADC_0);
+	ADC_EnableInterrupts(ADC_0);
 
 	PDB_Config config;
-	config.MODValue = 3788;
-	config.enableContinuousMode = true;
 	PDB_GetDefaultConfig(&config);
 	PDB_Init(&config);
 
 	PDB_EnableADCTrigger();
-	//PDB_EnableInterrupts(0);
+//	PDB_EnableInterrupts(0);
 
 	PDB_SetChannelDelay(0, 0, 1500);
 	PDB_LoadValues();

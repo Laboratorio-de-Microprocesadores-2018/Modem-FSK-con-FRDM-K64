@@ -112,9 +112,10 @@ uint16_t CnVTableH[BIT_FREC/PWM_FREC];
 void App_Init (void)
 {
 
+/*
 
-	/*------------------------------------------------------------------------*/
-	/*primero seteo dma*/
+	------------------------------------------------------------------------
+	primero seteo dma
 
 	DMA_Config DMAconfig;
 	DMA_GetDefaultConfig(&DMAconfig);
@@ -142,7 +143,7 @@ void App_Init (void)
 	DMAMUX_EnableChannel(1,false);
 
 
-	/*despues configuro ftm(y le activo dma requests)*/
+	despues configuro ftm(y le activo dma requests)
 
 
 
@@ -163,15 +164,15 @@ void App_Init (void)
 	PWMConfig.dutyCyclePercent=30;
 
 	FTM_SetupPwm(FTM_0,&PWMConfig);
-/*----------------------------------------------------------------------------*/
+----------------------------------------------------------------------------
 	//PORTA->PCR[0] =  PORT_PCR_MUX(3); //PTA0  Alt3 FTM0_CH5
 
-	/*
+
 	// Fill table with samples
 	for(int i=0; i<N_SAMPLE; i++)
 		signal[i]=sin((float)i/N_SAMPLE*2*M_PI)*2048+2047;
-	*/
-	/*
+
+
   	//DMA + PIT
 	DMAMUX_Init();
 
@@ -211,9 +212,9 @@ void App_Init (void)
 	PIT_SetTimerPeriod (PIT_CHNL_1, 0xFFFFFF);
 	//PIT_TimerIntrruptEnable(PIT_CHNL_1, true); // Probar comentar
 	PIT_TimerEnable(PIT_CHNL_1, true);
-*/
 
-	/*
+
+
 	// Configure PDB module
 	PDB_Config PDBconfig;
 	PDBconfig.enableContinuousMode = true;
@@ -241,9 +242,9 @@ void App_Init (void)
 
 	pinMode(PIN_SW2,INPUT);
 	pinMode(PORTNUM2PIN(PC,10),OUTPUT);
-*/
 
-	/*FTM_Config config;
+
+	FTM_Config config;
 	config.clockSource = FTM_SYSTEM_CLOCK;
 	config.prescale = FTM_PRESCALE_4;
 	FTM_Init(FTM_0,&config);
@@ -259,17 +260,18 @@ void App_Init (void)
 	PORTC->PCR[1] =  PORT_PCR_MUX(4); //PTC1  Alt4 FTM0_CH0
 
 
-	FTM_EnableOverflowInterrupt(FTM_0);*/
+	FTM_EnableOverflowInterrupt(FTM_0);
 
-/*
+
 	UARTInit();
+*/
 
 
 	MODEM_Init();
 
 	//sysTickInit();
 	pinMode(PIN_SW2,INPUT);
-	pinMode(PIN_LED_GREEN,OUTPUT);*/
+	pinMode(PIN_LED_GREEN,OUTPUT);
 
 }
 

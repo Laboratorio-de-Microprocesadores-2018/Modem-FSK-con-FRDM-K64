@@ -50,6 +50,7 @@ typedef enum {
 
 typedef enum{PDB_PreTrigger0, PDB_PreTrigger1}PDB_PreTrigger;
 typedef enum{PDB_Channel0, PDB_Channel1}PDB_Channel;
+
 typedef struct{
 	PDB_LoadValueMode loadValueMode;
 	PDB_Prescaler prescalerDivider;

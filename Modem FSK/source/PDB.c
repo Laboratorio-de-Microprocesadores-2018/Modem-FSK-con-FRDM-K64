@@ -147,7 +147,7 @@ void PDB_EnableADCTrigger(void)
 
 void PDB0_IRQHandler(void)
 {
-	digitalToggle(PORTNUM2PIN(PC,5));
+	//digitalToggle(PORTNUM2PIN(PC,5));
 
 	// Turn off flag
 	PDB0->SC &= ~PDB_SC_PDBIF_MASK;

@@ -31,7 +31,7 @@ typedef struct
 
 void MODEM_GetDefaultConfig();
 
-void MODEM_Init(MODEM_Config * config);
+void MODEM_Init();
 
 // REEMPLAZAR EL MAIN POR UN:
 void MODEM_Run(void);
