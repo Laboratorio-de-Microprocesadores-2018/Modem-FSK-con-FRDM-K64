@@ -1,5 +1,25 @@
 #ifndef STARTUP_CMP_H_
 #define STARTUP_CMP_H_
+
+
+/**
+ 	//						CMP
+	CMP_Config CMPconfig;
+	CMP_GetDefaultConfig(&CMPconfig);
+	CMPconfig.hysteresisMode = CMP_HysteresisLevel3;
+	CMPconfig.enableHighSpeed = false;
+	CMP_Init(CMP_0,&CMPconfig);
+	CMP_SetInputChannels(CMP_0,CMP_IN1,CMP_IN7);
+
+	CMP_DACConfig CMP_DACconfig = {.vref = CMP_VrefSourceVin2, .dacValue= 1.65/(3.33/64)-1};
+	CMP_SetDACConfig (CMP_0, &CMP_DACconfig);
+
+	// Configure filter with 5us period, and to filter glitches of les of 5 samples (25us)
+	CMP_FilterConfig CMPFilterConfig = {.filterPeriod = 200, .filterCount = 4};
+	CMP_SetFilterConfig (CMP_0, &CMPFilterConfig);
+
+	CMP_SetOutputDestination(CMP_OUT_FTM1_CH0);
+ */
 typedef enum{CMP_0,CMP_1,CMP_2}CMP_Instance;
 typedef enum{CMP_IN0,CMP_IN1,CMP_IN2,CMP_IN3,CMP_IN4,CMP_IN5,CMP_IN6,CMP_IN7}CMP_Input;
 typedef enum{CMP_OUT_FTM1_CH0,CMP_OUT_FTM2_CH0}CMP_Output;
