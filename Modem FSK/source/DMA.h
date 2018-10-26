@@ -5,6 +5,8 @@
 #include "stdbool.h"
 
 
+typedef void (*DMAIrqFun_t)(void);
+
 typedef enum
 {
     DMA_TransferSize1Bytes,
@@ -153,5 +155,9 @@ void DMA_TriggerChannelStart (uint32_t channel);
 void DMA_EnableChannelRequest (uint32_t channel);
 
 void DMA_DisableChannelRequest (uint32_t channel);
+
+void DMA_ModifySourceAddress(uint32_t channel, uint32_t newAddress);
+
+void DMA_SetCallback(uint32_t channel,DMAIrqFun_t majorIntCallback);
 
 #endif /* DMA_H_ */

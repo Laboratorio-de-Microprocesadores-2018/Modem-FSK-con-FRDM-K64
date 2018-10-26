@@ -10,7 +10,7 @@
 #include "PDB.h"
 #include "stdlib.h"
 
-
+#include "FloatBuffer.h"
 
 #define BUS_CLOCK 50000000
 
@@ -152,6 +152,36 @@ void modulate(void * data)
 
 	CLEAR_TEST_PIN;
 }
+
+//  Fir coeffs
+static float FIR[6];
+
+// Buffer to store delayed samples: x(n) to x(n-delta)
+NEW_FLOAT_BUFFER(x,5+1);
+
+// Buffer to store m(n) = x(n)*x(n-delta)
+NEW_FLOAT_BUFFER(m,6);
+
+void demodulate()
+{
+	static float y;
+
+	// Get value from ADC x(n)
+	PUSH(x,( (float)ADC_GetConversionValue()/1024.0 - 0.5) *3.3);
+
+	// Push m(n)=x(n)*x(n-delta)
+	PUSH(m,GET_TAIL(x)*GET_HEAD(x));
+
+	// Apply filter
+	y = 0;
+	for(int i=0; i<6; i++)
+		y += GET(m,i) * FIR[i];
+
+	uint8_t output = y < 0 ? 1:0;
+
+
+}
+
 
 
 void MODEM_Init(MODEM_Config * config)

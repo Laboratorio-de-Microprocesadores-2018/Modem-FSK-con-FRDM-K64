@@ -6,15 +6,25 @@
 
 static PORT_Type * ports[] = PORT_BASE_PTRS;
 
+void PORT_GetPinDefaultConfig(PORT_Config * config)
+{
+	config->ds = PORT_LowDriveStrength;
+	config->filter = PORT_PassiveFilterDisable;
+	config->interrupt = PORT_InterruptOrDMADisabled;
+	config->lk =  PORT_UnlockRegister;
+	config->mux = PORT_MuxAlt0;
+	config->od = PORT_OpenDrainDisable;
+	config->pull = PORT_PullDisable;
+	config->sr = PORT_FastSlewRate;
+}
 
 void 	PORT_PinConfig (PORT_Instance n, uint32_t pin, PORT_Config *config)
 {
 	ASSERT(n<FSL_FEATURE_SOC_PORT_COUNT);
 
 	// Clock gating
-	uint32_t masks[] = {SIM_SCGC5_PORTA_MASK,SIM_SCGC5_PORTB_MASK,SIM_SCGC5_PORTC_MASK,SIM_SCGC5_PORTD_MASK,SIM_SCGC5_PORTE_MASK};
-
-	SIM->SCGC5 |= masks[n];
+	uint32_t PORTS_SCG[] = {SIM_SCGC5_PORTA_MASK,SIM_SCGC5_PORTB_MASK,SIM_SCGC5_PORTC_MASK,SIM_SCGC5_PORTD_MASK,SIM_SCGC5_PORTE_MASK};
+	SIM->SCGC5 |= PORTS_SCG[n];
 
 	ports[n]->PCR[pin] = 	PORT_PCR_SRE(config->sr) | 
 							PORT_PCR_PFE(config->filter) | 
@@ -31,10 +41,9 @@ void 	PORT_PinConfig (PORT_Instance n, uint32_t pin, PORT_Config *config)
 	else
 		ports[n]->PCR[pin] |= PORT_PCR_PE_MASK;
 
-
 }
 
-void 	PORT_MultiplePinsConfig (PORT_Instance n, uint32_t mask, PORT_Config *config)
+void PORT_MultiplePinsConfig (PORT_Instance n, uint32_t mask, PORT_Config *config)
 {
 	ASSERT(n<FSL_FEATURE_SOC_PORT_COUNT);
 

@@ -41,13 +41,15 @@ PTD2  Alt4 FTM3_CH2
 PTD3  Alt4 FTM3_CH3
 
 */
+
+
+typedef void (*FTMIrqFun_t)(void);
 typedef enum{FTM_0,FTM_1,FTM_2,FTM_3}FTM_Instance;
 
 typedef enum{FTM_NO_CLOCK,
 			FTM_SYSTEM_CLOCK,
 			FTM_FIXED_FREQ,
 			FTM_EXTERNAL_CLOCK}FTM_ClockSource;
-
 
 typedef enum{FTM_PRESCALE_1,
 			FTM_PRESCALE_2,
@@ -77,6 +79,11 @@ typedef enum{
 }FTM_Channel;
 
 
+typedef enum{
+	FTM_RISING_EDGE=1, //Capture on rising edge only.
+	FTM_FALLING_EDGE,//Capture on falling edge only.
+	FTM_BOTH_EDGES //Capture on rising or falling edge.
+}FTM_InputCaptureMode;
 
 
 
@@ -89,15 +96,26 @@ typedef struct{
 	FTM_Channel channel;
 	FTM_PWMMode mode;
 	bool enableDMA;
-	uint32_t PWMFreq;
-	uint8_t dutyCyclePercent;					//agregue a partir de esto
+	uint16_t mod;
+	uint8_t CnV;					//agregue a partir de esto
 	//se podria agregar level para poner high true o low true pulse
 }FTM_PwmConfig;
+
+typedef struct {
+	FTM_Channel channel;
+	FTMIrqFun_t callback;
+	uint16_t mod;
+	bool enableDMA;
+	FTM_InputCaptureMode mode;
+	uint32_t 	filterValue;//Only channels 0,1,2 and 3 can have filter
+}FTM_InputCaptureConfig;
 
 void FTM_GetDefaultConfig(FTM_Config * config);
 void FTM_Init(FTM_Instance instance, FTM_Config * config);
 bool FTM_SetupPwm(FTM_Instance 	instance,FTM_PwmConfig * config);
-void FTM_UpdatePwmDutycycle(FTM_Instance 	instance,FTM_Channel channel,uint8_t dutyCyclePercent);//en principio no seria necesaria
+void FTM_EnableOverflowInterrupt(FTM_Instance instance);
+void FTM_EnableClock(FTM_Instance instance);
+bool FTM_SetupInputCapture(FTM_Instance instance,FTM_InputCaptureConfig *config);
 uint32_t FTM_GetCnVAddress(FTM_Instance 	instance,FTM_Channel channel);
 uint16_t FTM_GetModValue(FTM_Instance instance);
 #endif /* FTM_H_ */

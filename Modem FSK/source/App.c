@@ -15,19 +15,12 @@
 
 #include "Modem.h"
 #include "UART.h"
-
+#include "CMP.h"
 #include "GPIO.h"
 #include "SysTick.h"
+#include "PORT.h"
 
 
-#include "math.h"
-#include "SysTick.h"
-#include "DAC.h"
-#include "DMAMUX.h"
-#include "DMA.h"
-#include "PIT.h"
-#include "stdlib.h"
-#include "FTM.h"
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
@@ -55,13 +48,9 @@ static uint8_t UartRxBuffer[10];
 
 
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
-
-//uint8_t srcARR[] = {1,2,3,4,5};
-//uint8_t destARR[5]={0,0,0,0,0};
 
 
 #define BIT_FREC 1200
@@ -70,6 +59,9 @@ static uint8_t UartRxBuffer[10];
 void App_Init (void)
 {
 
+ PWMGen_Init();
+
+ sysTickInit();
 
 	UART_Config UARTconfig;
 	UARTconfig.baud = UART_Baud_1200_Bps;
@@ -80,12 +72,15 @@ void App_Init (void)
 	UARTconfig.TxFIFOEnable = true;
 	UARTconfig.loopBackEnable = false;
 	UART_Init(&UARTconfig);
+<<<<<<< HEAD
 
 
 
 	MODEM_Config MODEMconfig;
 
 	MODEM_Init(&MODEMconfig);
+=======
+>>>>>>> branch 'master' of https://github.com/tlifschitz/Modem-FSK-con-FRDM-K64.git
 
 
 
@@ -94,38 +89,51 @@ void App_Init (void)
 	//pinMode(PIN_SW2,INPUT);
 	//pinMode(PIN_LED_GREEN,OUTPUT);
 
+	// PIN configuration for CMP
+	PORT_Config PORTconfig;
+	PORT_GetPinDefaultConfig(&PORTconfig);
+	// PC5 as CMP0_OUT
+	PORTconfig.mux = PORT_MuxAlt6;
+	PORT_PinConfig(PORT_C,5,&PORTconfig);
+	// PC7 as CMP0_IN1
+	PORTconfig.mux = PORT_MuxAlt0;
+	PORT_PinConfig(PORT_C,7,&PORTconfig);
+
+	//						CMP
+	CMP_Config CMPconfig;
+	CMP_GetDefaultConfig(&CMPconfig);
+	CMPconfig.hysteresisMode = CMP_HysteresisLevel3;
+	CMPconfig.enableHighSpeed = false;
+	CMP_Init(CMP_0,&CMPconfig);
+	CMP_SetInputChannels(CMP_0,CMP_IN1,CMP_IN7);
+
+	CMP_DACConfig CMP_DACconfig = {.vref = CMP_VrefSourceVin2, .dacValue= 1.65/(3.33/64)-1};
+	CMP_SetDACConfig (CMP_0, &CMP_DACconfig);
+
+	// Configure filter with 5us period, and to filter glitches of les of 5 samples (25us)
+	CMP_FilterConfig CMPFilterConfig = {.filterPeriod = 200, .filterCount = 4};
+	CMP_SetFilterConfig (CMP_0, &CMPFilterConfig);
+
+	CMP_SetOutputDestination(CMP_OUT_FTM1_CH0);
+
+
 }
-
-
-
 
 
 static int currState,lastState;
 static uint64_t lastDebounceTime;
 
-
 void App_Run (void)
 {
-/*
-	if((millis()-lastDebounceTime)>=500)
+
+	static uint64_t time;
+	if((millis()-time)>=1000)
 	{
-		lastDebounceTime = millis();
-		MODEM_SendData(0x01);
-		uint64_t t = millis();
-		while((millis()-t)<5);
-
-		MODEM_SendData(0x02);
-		t = millis();
-		while((millis()-t)<9);
-
-		MODEM_SendData(0x03);
-		t = millis();
-		while((millis()-t)<9);
-
-		MODEM_SendData(0x04);
-		digitalToggle(PIN_LED_GREEN);
+		time = millis();
+		PWMGen_SendData('A');
 	}
-*/
+
+
 
 	/*
 	static int debounced;
@@ -153,7 +161,15 @@ void App_Run (void)
 
 	static uint8_t rxByte;
 	if(UART_ReceiveByte(&rxByte))
+<<<<<<< HEAD
 		MODEM_SendData(rxByte);
+=======
+	{
+		MODEM_SendData(rxByte);
+		UART_SendByte(rxByte);
+	}
+
+>>>>>>> branch 'master' of https://github.com/tlifschitz/Modem-FSK-con-FRDM-K64.git
 
 /*
 // Mas o menos asi seria el main loop

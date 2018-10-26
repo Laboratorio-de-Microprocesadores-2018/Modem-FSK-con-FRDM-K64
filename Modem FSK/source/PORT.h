@@ -12,8 +12,8 @@ typedef enum {
 }PORT_Instance;
 
 typedef enum {
-	PORT_MuxDisabled,
-	PORT_MuxGPIO,
+	PORT_MuxAlt0,
+	PORT_MuxAlt1,
 	PORT_MuxAlt2,
 	PORT_MuxAlt3,
 	PORT_MuxAlt4,
@@ -21,7 +21,6 @@ typedef enum {
 	PORT_MuxAlt6,
 	PORT_MuxAlt7
 }PORT_Mux;
-
 
 typedef enum {
 	PORT_PullDisable = 2U, 
@@ -50,8 +49,8 @@ typedef enum {
 }PORT_DriveStrength;
 
 typedef enum {
-  PORT_LockRegister = 0U, 
-  PORT_UnlockRegister = 1U 
+  PORT_UnlockRegister,
+  PORT_LockRegister,
 }PORT_Lock;
 
 
@@ -75,6 +74,18 @@ typedef struct{
 	PORT_DriveStrength ds;
 	PORT_Interrupt interrupt;
 }PORT_Config;
+
+/**
+ * 	PORT_LowDriveStrength;
+ *	PORT_PassiveFilterDisable;
+ *	PORT_InterruptOrDMADisabled;
+ *	PORT_UnlockRegister;
+ *	PORT_MuxDisabled;
+ *	PORT_OpenDrainDisable;
+ *	PORT_PullDisable;
+ *	PORT_FastSlewRate;
+ */
+void PORT_GetPinDefaultConfig(PORT_Config * config);
 
 void 	PORT_PinConfig (PORT_Instance n, uint32_t pin, PORT_Config *config);
 
