@@ -9,10 +9,10 @@
 #include "PIT.h"
 #include "PDB.h"
 #include "stdlib.h"
-
+#include "CircularBuffer.h"
 #include "FloatBuffer.h"
 
-#define BUS_CLOCK 50000000
+#define BUS_CLOCK 50000000.0
 
 #define BIT_RATE	(1200.0)
 
@@ -45,60 +45,54 @@ static unsigned int parityTable[256] = { LOOK_UP };
 
 #define bufferSizeDataBytes (30)
 #define frameSizeBits (11)
-#define bufferSize bufferSizeDataBytes*frameSizeBits
+#define bufferSize (bufferSizeDataBytes*frameSizeBits)
 #define bufferEmpty (head==tail)
 #define bufferFull	(tail+1==head)
-static uint8_t outcomingBits[bufferSize];
-static uint8_t head,tail;
-
-//static uint16_t ADCSamples[11];
-static uint8_t inputBytes[10];
+static uint32_t outcomingBits[bufferSize];
+static uint32_t head,tail;
 
 
-static const float h[] = {0.000184258321387766,	-0.00221281271600225,	-0.00875721735248610,	-0.0157935638369741,	-0.0125404257819552,
-							0.0140848855293968,	0.0690100446059607,	0.140515735542082,	0.202192975479381,	0.226632240418417,
-							0.202192975479381,	0.140515735542082,	0.0690100446059607,	0.0140848855293968,	-0.0125404257819552,
-							-0.0157935638369741,	-0.00875721735248610,	-0.00221281271600225,	0.000184258321387766};
 
-static const uint16_t filterNum = sizeof(h)/sizeof(h[0]);
+#define DEMOD_SAMPLE_FREQ 			(13200.0)
+#define DEMOD_DELTA					(6) //(ceil((446e-6)/(1/SAMPLE_FREQ)));
+#define DEMOD_SAMPLES_BUFFER_SIZE	(256)
 
-#define SAMPLE_FREQ (13200.0)
-#define DELTA	(6) //(ceil((446e-6)/(1/SAMPLE_FREQ)));
-#define SAMPLES_BUFFER_SIZE	(256)
+#define DEMOD_COMP_HYSTERERSIS		(0)
 
-#define DEM_COMP_HYSTERERSIS	(0.01)
+#define DEMOD_SAMPLES_PER_BIT			(DEMOD_SAMPLE_FREQ/BIT_RATE)
+#define DEMOD_SAMPLES_TO_BIT_MIDDLE		((uint8_t)(DEMOD_SAMPLES_PER_BIT/2))
+#define DEMOD_DATA_BITS_PER_FRAME		(8)
 
-#define SAMPLES_PER_BIT			(SAMPLE_FREQ/BIT_RATE)
-#define SAMPLES_TO_BIT_MIDDLE	(SAMPLES_PER_BIT/2.0)
-#define DATA_BITS_PER_FRAME		(8)
+#define DEMOD_FIR_ORDER				(19)
+
 typedef enum{MODEM_DEM_IDLE, MODEM_DEM_READING, MODEM_DEM_ENDED_FRAME, MODEM_DEM_TRANSITION}MODEM_DemState;
 
-typedef struct
-{
-	float samples[SAMPLES_BUFFER_SIZE];     /** Pointer to statically reserved memory array. */
-//	char * const buffer_end; /** Pointer to end of the array. */
-	uint16_t head;	         /** Pointer to the head of the buffer. */
-	uint16_t tail;	         /** Pointer to the tail of the buffer. */
-	uint16_t capacity;            /** Maximum number of elements in the buffer. */
-	uint16_t count;               /** Number of elements in the buffer. */
-//	uint16_t size;                /** Size of each element in the buffer. */
-} MODEMCircularBuffer;
+//typedef struct
+//{
+//	float samples[SAMPLES_BUFFER_SIZE];     /** Pointer to statically reserved memory array. */
+////	char * const buffer_end; /** Pointer to end of the array. */
+//	uint16_t head;	         /** Pointer to the head of the buffer. */
+//	uint16_t tail;	         /** Pointer to the tail of the buffer. */
+//	uint16_t capacity;            /** Maximum number of elements in the buffer. */
+//	uint16_t count;               /** Number of elements in the buffer. */
+////	uint16_t size;                /** Size of each element in the buffer. */
+//} MODEMCircularBuffer;
 
-static MODEMCircularBuffer xBuffer, mBuffer, dBuffer;
-static uint8_t outSamples[SAMPLES_BUFFER_SIZE];
+//  Fir coeffs
+static float FIR[DEMOD_FIR_ORDER] = {0.000184258321387766,	-0.00221281271600225,	-0.00875721735248610,	-0.0157935638369741,	-0.0125404257819552,
+		0.0140848855293968,	0.0690100446059607,	0.140515735542082,	0.202192975479381,	0.226632240418417,
+		0.202192975479381,	0.140515735542082,	0.0690100446059607,	0.0140848855293968,	-0.0125404257819552,
+		-0.0157935638369741,	-0.00875721735248610,	-0.00221281271600225,	0.000184258321387766};
 
-static uint16_t firstSample;
-static uint16_t timeIndex;
+// Buffer to store delayed samples: x(n) to x(n-delta)
+NEW_FLOAT_BUFFER(xBuffer,DEMOD_DELTA+1);
+
+// Buffer to store m(n) = x(n)*x(n-delta)
+NEW_FLOAT_BUFFER(mBuffer,DEMOD_FIR_ORDER);
+
+NEW_CIRCULAR_BUFFER(transmitBuffer, 10, sizeof(uint16_t));
 
 
-static uint16_t demodulationSampleCount;
-static MODEM_DemState demodulationState;
-//static uint16_t sampleNumInBit;
-static uint16_t demodulationTxBitNum;
-static uint8_t demodulationTxByte;
-static bool demodulationParityBit;
-static bool demodulationSynked;
-static uint16_t demodulationTimeIndexResto;
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -109,20 +103,6 @@ static uint16_t demodulationTimeIndexResto;
 void modulate(void * data);
 
 
-
-void MODEM_demodulationUpdateState(void);
-void MODEM_demodulationGoToNextSample(void);
-
-
-
-
-bool MOEDM_BuffInit(MODEMCircularBuffer *this);
-bool MODEM_BuffPush(MODEMCircularBuffer *this, float sample);
-bool MODEM_BuffPop(MODEMCircularBuffer *this,float *sample);
-void MODEM_BuffFlush(MODEMCircularBuffer * this);
-uint16_t MODEM_BuffNumel(MODEMCircularBuffer *this);
-bool MODEM_BuffIsEmpty(MODEMCircularBuffer *this);
-bool MODEM_BuffIsFull(MODEMCircularBuffer *this);
 
 #define MEASURE_CPU_TIME
 #ifdef MEASURE_CPU_TIME
@@ -152,36 +132,6 @@ void modulate(void * data)
 
 	CLEAR_TEST_PIN;
 }
-
-//  Fir coeffs
-static float FIR[6];
-
-// Buffer to store delayed samples: x(n) to x(n-delta)
-NEW_FLOAT_BUFFER(x,5+1);
-
-// Buffer to store m(n) = x(n)*x(n-delta)
-NEW_FLOAT_BUFFER(m,6);
-
-void demodulate()
-{
-	static float y;
-
-	// Get value from ADC x(n)
-	PUSH(x,( (float)ADC_GetConversionValue()/1024.0 - 0.5) *3.3);
-
-	// Push m(n)=x(n)*x(n-delta)
-	PUSH(m,GET_TAIL(x)*GET_HEAD(x));
-
-	// Apply filter
-	y = 0;
-	for(int i=0; i<6; i++)
-		y += GET(m,i) * FIR[i];
-
-	uint8_t output = y < 0 ? 1:0;
-
-
-}
-
 
 
 void MODEM_Init(MODEM_Config * config)
@@ -228,7 +178,7 @@ void MODEM_Init(MODEM_Config * config)
 	 * */
 	PDB_Config PDBconfig;
 	PDB_GetDefaultConfig(&PDBconfig);
-	PDBconfig.MODValue = ((BUS_CLOCK/SAMPLE_FREQ)+0.5); // PDB running at sample rate
+	PDBconfig.MODValue = ((BUS_CLOCK/DEMOD_SAMPLE_FREQ)+0.5); // PDB running at sample rate
 	PDB_Init(&PDBconfig);
 
 	//----------------------------- PIT -------------------------------//
@@ -315,119 +265,109 @@ void MODEM_Init(MODEM_Config * config)
 
 
 }
-void DMA0_IRQHandler()
-{
-	int i=0;
-	i++;
-	if(i==0)
-		while(1);
-}
+
 
 void ADC0_IRQHandler(void){
 
 	digitalToggle(PORTNUM2PIN(PC,5));
-//
-//	static MODEMCircularBuffer xBuffer, mBuffer, dBuffer;
 
-	if(MODEM_BuffIsEmpty(&xBuffer))
+	static MODEM_DemState demodulationState;
+	static uint8_t demodulationSampleCount, demodulationTxBitNum;
+	static uint16_t demodulationTxByte;
+//	static uint8_t outs[];
+
+
+	static float dn;
+
+	// Get value from ADC x(n)
+	PUSH(xBuffer,( (float)ADC_GetConversionResult(ADC_0,ADC_ChannelA)/ADC_RESOLUTION*ADC_VCC-ADC_OFFSET));
+
+	// Push m(n)=x(n)*x(n-delta)
+	PUSH(mBuffer,GET_TAIL(xBuffer)*GET_HEAD(xBuffer));
+
+	// Apply filter
+	dn = 0;
+	for(uint16_t i=0; i < DEMOD_FIR_ORDER; i++)
+		dn += GET(mBuffer,i) * FIR[i];
+
+	uint8_t output;
+	if (dn > DEMOD_COMP_HYSTERERSIS)
+		output = 0;
+	else if (dn < -DEMOD_COMP_HYSTERERSIS)
+		output = 1;
+
+
+//	DAC_WriteValue(DAC_0,(uint16_t)((dn + ADC_OFFSET)*ADC_RESOLUTION/ADC_VCC));
+	// DAC_WriteValue(DAC_0,(uint16_t)(output * ADC_RESOLUTION));
+
+
+	switch(demodulationState)
 	{
-		ASSERT(MOEDM_BuffInit(&xBuffer));
-		ASSERT(MOEDM_BuffInit(&mBuffer));
-		ASSERT(MOEDM_BuffInit(&dBuffer));
-	}
 
-	static float dataSample;
-	static float xn;
-	xn = (float)ADC_GetConversionResult(ADC_0,ADC_ChannelA)/ADC_RESOLUTION*ADC_VCC-ADC_OFFSET;
-
-	ASSERT(MODEM_BuffPush(&xBuffer, xn));
-
-	if(xBuffer.count > DELTA)
-	{
-		static float mn;
-		mn = xBuffer.samples[(xBuffer.tail + DELTA)%xBuffer.capacity] * xBuffer.samples[xBuffer.tail]; //Aca debería poder mirar los elmentos dentro del buffer circular.
-		ASSERT(MODEM_BuffPush(&mBuffer, mn));
-		if((mBuffer.count) > filterNum)
-		{
-			static float dn = 0;
-			firstSample = mBuffer.tail;
-			for(timeIndex = firstSample; timeIndex < firstSample + filterNum; timeIndex++)
-				dn += ((mBuffer.samples[(timeIndex)%mBuffer.capacity]) * (h[filterNum - (timeIndex - firstSample) - 1]));
-
-			if (dn > DEM_COMP_HYSTERERSIS)
-				dn = ADC_GND;
-			else if (dn < -DEM_COMP_HYSTERERSIS)
-				dn = 1;
-			ASSERT(MODEM_BuffPush(&dBuffer, dn));
-
-
-			ASSERT(MODEM_BuffPop(&mBuffer, &dataSample));
-
-			if(MODEM_BuffIsFull(&dBuffer))
-				ASSERT(MODEM_BuffPop(&dBuffer, &dataSample));
-			demodulationSampleCount ++;
-		}
-
-		ASSERT(MODEM_BuffPop(&xBuffer, &dataSample));
-	}
-
-//	float printVal = dBuffer.samples[dBuffer.tail];
-//	uint16_t printVal = xBuffer.samples[xBuffer.tail];
-//	DAC_WriteValue(DAC_0,(uint16_t)((printVal+1.65)*1024.0/3.3));
-	if(demodulationSampleCount == SAMPLES_BUFFER_SIZE)
-	{
-		switch(demodulationState)
-		{
-
-			case MODEM_DEM_IDLE:
-
-				if(demodulationSynked)
+		case MODEM_DEM_IDLE:
+			if(output == 0)
+			{
+				demodulationSampleCount ++;
+				if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
 				{
-					firstSample = dBuffer.tail + SAMPLES_PER_BIT - demodulationTimeIndexResto;
-					for(timeIndex = firstSample; (timeIndex < firstSample + dBuffer.count) && ((dBuffer.samples[(timeIndex)%dBuffer.capacity]) == ADC_GND); timeIndex += SAMPLES_PER_BIT){};
-				}
-				else
-				{
-//					uint16_t a = dBuffer.count;
-					firstSample = dBuffer.tail;
-					for(timeIndex = firstSample; timeIndex < firstSample + dBuffer.count; timeIndex ++)
-					{
-						dataSample = 2;
-//						uint8_t k;
-//						k = (timeIndex)%dBuffer.capacity;
-						dataSample = dBuffer.samples[dBuffer.tail];
-//						if(dBuffer.samples[(timeIndex)%dBuffer.capacity] == ADC_GND)
-//							break;
-					}
-				}
-
-				if(dataSample == ADC_GND)
-				{
+					demodulationSampleCount = 0;
 					demodulationState = MODEM_DEM_READING;
-
-					if(demodulationSynked)
-						timeIndex += SAMPLES_PER_BIT;
-					else
-					{
-						timeIndex += SAMPLES_PER_BIT + SAMPLES_TO_BIT_MIDDLE - 1;
-						demodulationSynked = true;
-					}
-
-					for(; timeIndex < firstSample + dBuffer.count; timeIndex += SAMPLES_PER_BIT)
-					{
-						MODEM_demodulationGoToNextSample();
-					}
-					demodulationTimeIndexResto = timeIndex - (firstSample + dBuffer.count);
 				}
-				break;
+			}else if((output == 1) && (demodulationSampleCount > 0))
+				demodulationSampleCount = 0;
 
-			case MODEM_DEM_READING: case MODEM_DEM_ENDED_FRAME: case MODEM_DEM_TRANSITION:
-				MODEM_demodulationUpdateState();
-				break;
+			break;
 
-		}
-		demodulationSampleCount = 0;
+		case MODEM_DEM_READING:
+
+			ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
+
+			if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
+			{
+				demodulationTxByte |= output << demodulationTxBitNum;
+				demodulationTxBitNum ++;
+				demodulationSampleCount ++;
+
+			}
+			else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+			{
+				if(demodulationTxBitNum == DEMOD_DATA_BITS_PER_FRAME + 1){
+					uint8_t c = (uint8_t)demodulationTxByte;
+					push(&transmitBuffer , &demodulationTxByte);
+					demodulationTxBitNum = 0;
+					demodulationTxByte = 0;
+					demodulationState = MODEM_DEM_ENDED_FRAME;
+				}
+				demodulationSampleCount = 0;
+			}else
+				demodulationSampleCount ++;
+
+			break;
+
+		case MODEM_DEM_ENDED_FRAME:
+			ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
+
+			if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
+			{
+//				ASSERT(output);
+				demodulationSampleCount ++;
+
+			}
+			else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+			{
+				demodulationSampleCount = 0;
+				demodulationState = MODEM_DEM_IDLE;
+			}else
+				demodulationSampleCount ++;
+
+			break;
+		default:
+			ASSERT(0);
+			break;
+
 	}
+//		demodulationSampleCount = 0;
+//	}
 
 
 
@@ -436,54 +376,9 @@ void ADC0_IRQHandler(void){
 	digitalToggle(PORTNUM2PIN(PC,5));
 
 }
-void MODEM_demodulationUpdateState(void)
-{
-	firstSample = dBuffer.tail + SAMPLES_PER_BIT - demodulationTimeIndexResto;
-	for(timeIndex = firstSample; timeIndex < firstSample + dBuffer.count; timeIndex += SAMPLES_PER_BIT)
-	{
-		MODEM_demodulationGoToNextSample();
-	}
-	demodulationTimeIndexResto = timeIndex - (firstSample + dBuffer.count);
-
-}
-void MODEM_demodulationGoToNextSample(void)
-{
-	if((demodulationTxBitNum != DATA_BITS_PER_FRAME) && (demodulationState == MODEM_DEM_READING))
-	{
-		if(dBuffer.samples[(timeIndex)%dBuffer.capacity] == 1)
-			demodulationTxByte |= true << demodulationTxBitNum;
-		else
-			demodulationTxByte &= ~(true << demodulationTxBitNum);
-
-		demodulationTxBitNum ++;
-	}else if(demodulationState == MODEM_DEM_READING)
-	{
-		demodulationParityBit = (dBuffer.samples[(timeIndex)%dBuffer.capacity] == 1)? true : false;
-		demodulationState = MODEM_DEM_ENDED_FRAME;
-	}else if(demodulationState == MODEM_DEM_ENDED_FRAME)
-	{
-//		ASSERT(dBuffer.samples[(timeIndex)%dBuffer.capacity] == 1);
-		demodulationState = MODEM_DEM_TRANSITION;
-	}else if(demodulationState == MODEM_DEM_TRANSITION)
-	{
-		if(dBuffer.samples[(timeIndex)%dBuffer.capacity] == ADC_GND)
-		{
-			demodulationState = MODEM_DEM_READING;
-			demodulationTxBitNum = 0;
-		}else
-		{
-			demodulationState = MODEM_DEM_IDLE;
-			demodulationTxBitNum = 0;
-		}
-	}
-}
 
 
-
-
-
-
-void MODEM_SendData(uint8_t data)
+void MODEM_SendByte(uint8_t data)
 {
 	//SET_TEST_PIN;
 
@@ -515,65 +410,20 @@ void MODEM_SendData(uint8_t data)
 	//CLEAR_TEST_PIN;
 }
 
-bool MODEM_ReceiveData(uint8_t * buffer, uint8_t * length)
+bool MODEM_ReceiveByte(uint8_t * byte)
 {
-
-
-	return true;
-}
-
-
-bool MOEDM_BuffInit(MODEMCircularBuffer *this)
-{
-	this->capacity = SAMPLES_BUFFER_SIZE;
-	this->count = 0;
-	this->head = 0;
-	this->tail = 0;
-
-	return true;
-}
-bool MODEM_BuffPush(MODEMCircularBuffer *this, float samples)
-{
-	if(this->count == this->capacity)
-		return false;
-	else
+	uint16_t b;
+	if(pop(&transmitBuffer,&b))
 	{
-		this->samples[this->head] = samples;
-		this->head ++;
-	    if(this->head == this->capacity)
-	    	this->head = 0;
-	    this->count++;
-	    return true;
-	}
-}
-bool MODEM_BuffPop(MODEMCircularBuffer *this,float *samples)
-{
-	if(this->count == 0)
-		return false;
-	else
-	{
-		*samples = this->samples[this->tail];
-		this->tail ++;
-		if(this->tail == this->capacity)
-			this->tail = 0;
-		this->count--;
+		(*byte)=(uint8_t)(b&0xFF);
 		return true;
+//		if(((b>>9)&1) == parityTable[(*byte)])
+//		{
+//
+//			return true;
+//		}
+//		else return false;
 	}
-}
-void MODEM_BuffFlush(MODEMCircularBuffer * this)
-{
-	this->head = this->tail;
-	this->count = 0;
-}
-uint16_t MODEM_BuffNumel(MODEMCircularBuffer *this)
-{
-	return this->count;
-}
-bool MODEM_BuffIsEmpty(MODEMCircularBuffer *this)
-{
-	return (this->count == 0);
-}
-bool MODEM_BuffIsFull(MODEMCircularBuffer *this)
-{
-	return (this->count == this->capacity);
+//	else return false;
+
 }

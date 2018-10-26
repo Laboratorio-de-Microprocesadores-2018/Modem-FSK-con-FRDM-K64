@@ -36,9 +36,9 @@ void MODEM_Init();
 // REEMPLAZAR EL MAIN POR UN:
 void MODEM_Run(void);
 
-void MODEM_SendData(uint8_t data);
+void MODEM_SendByte(uint8_t byte);
 
-bool MODEM_ReceiveData(uint8_t * buffer, uint8_t * length);
+bool MODEM_ReceiveByte(uint8_t * byte);
 
 
 #endif /* MODEM_H_ */
