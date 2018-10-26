@@ -13,6 +13,7 @@
 
 
 #define BUS_CLOCK 50000000
+
 #define SAMPLE_FREQ 13200
 
 #define N_SAMPLE (256)
@@ -24,9 +25,13 @@
 #define SPACE T2
 #define BIT2PERIOD(x) (x)==1? MARK:SPACE
 
+// Module usage definitions
 #define DAC_DMA_CHANNEL 0
 #define ADC_DMA_CHANNEL 1
+#define DAC_TIMER PIT_CHNL_0
+#define MODULATION_TIMER PIT_CHNL_1
 
+// DAC output samples
 static uint16_t signal[N_SAMPLE];
 
 // Generating the look-up table while pre-processing
@@ -34,7 +39,6 @@ static uint16_t signal[N_SAMPLE];
 #define P4(n) P2(n), P2(n ^ 1), P2(n ^ 1), P2(n)
 #define P6(n) P4(n), P4(n ^ 1), P4(n ^ 1), P4(n)
 #define LOOK_UP P6(0), P6(1), P6(1), P6(0)
-
 // LOOK_UP is the macro expansion to generate the table
 static unsigned int parityTable[256] = { LOOK_UP };
 
@@ -44,7 +48,7 @@ static unsigned int parityTable[256] = { LOOK_UP };
 #define bufferSize bufferSizeDataBytes*frameSizeBits
 #define bufferEmpty (head==tail)
 #define bufferFull	(tail+1==head)
-static uint32_t outcomingBits[bufferSize];
+static uint8_t outcomingBits[bufferSize];
 static uint8_t head,tail;
 
 static uint16_t ADCSamples[11];
@@ -55,7 +59,6 @@ void modulate(void * data);
 //void deModulate(void);
 //bool FSKLPFilter(uint8_t m[SAMPLE_NUM], uint8_t d[SAMPLE_NUM]);
 //uint8_t convolution(uint8_t x[],uint8_t h[]);
-
 
 #define MEASURE_CPU_TIME
 #ifdef MEASURE_CPU_TIME
@@ -72,18 +75,18 @@ void modulate(void * data);
 
 void modulate(void * data)
 {
-	//SET_TEST_PIN;
+	SET_TEST_PIN;
 
 	// If no data in buffer, idle state is MARK
 	if(bufferEmpty)
-		PIT_SetTimerPeriod (PIT_CHNL_0, MARK);
+		PIT_SetTimerPeriod (DAC_TIMER, MARK);
 	else
 	{
-		PIT_SetTimerPeriod (PIT_CHNL_0, outcomingBits[tail]);
+		PIT_SetTimerPeriod (DAC_TIMER, outcomingBits[tail]);
 		tail = (tail + 1)%bufferSize;
 	}
 
-	//CLEAR_TEST_PIN;
+	CLEAR_TEST_PIN;
 }
 
 
@@ -161,14 +164,41 @@ void MODEM_Init(MODEM_Config * config)
 		signal[i]= s;
 	}
 
+	// 						MODULES INITIALIZATION
+
+	//----------------------------- DMA -------------------------------//
 	DMA_Config DMAconfig;
 	DMA_GetDefaultConfig(&DMAconfig);
 	DMAconfig.enableDebugMode=false;
 	DMA_Init(&DMAconfig);
 	DMAMUX_Init();
 
-    // Configure DMA0 to copy from sine table to DAC
-	DMAMUX_SetSource(DAC_DMA_CHANNEL,DMAMUX_AlwaysEnabled3);
+	//----------------------------- DAC -------------------------------//
+	DAC_Init(DAC_0,DAC_VREF_2);
+	DAC_Enable(DAC_0);
+
+	//----------------------------- ADC -------------------------------//
+	ADC_Config ADCconfig;
+	ADC_GetDefaultConfig(&ADCconfig);
+	ADCconfig.DMAEnable = false; // ADC triggers DMA request
+	ADC_Init(ADC_0,&ADCconfig);
+	ADC_SetHardwareTrigger(ADC_0);
+
+	//----------------------------- PDB -------------------------------//
+	PDB_Config PDBconfig;
+	PDB_GetDefaultConfig(&PDBconfig);
+	PDBconfig.MODValue = ((BUS_CLOCK/SAMPLE_FREQ)+0.5); // PDB running at sample rate
+	PDB_Init(&PDBconfig);
+
+	//----------------------------- PIT -------------------------------//
+	PIT_Config PITConfig;
+	PITConfig.debugModeEnable=true;
+	PIT_Init(&PITConfig);
+	PIT_Enable();
+
+	// 								INPUT
+	// Configure DMA0 to copy from sine table to DAC
+	DMAMUX_SetSource(DAC_DMA_CHANNEL,DMAMUX_AlwaysEnabled0);
 	DMAMUX_EnableChannel(DAC_DMA_CHANNEL,true);
 
 	DMA_TransferConfig DMATransfer;
@@ -183,72 +213,75 @@ void MODEM_Init(MODEM_Config * config)
 	DMATransfer.sourceLastAdjust = -1*sizeof(signal);
 	DMATransfer.destinationLastAdjust = 0;
 	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
-	//DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
+	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
-	 // Configure DMA1 to copy from ADC to buffer
-	 DMAMUX_SetSource(1,DMAMUX_ADC0);
-
-	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
-	 DMATransfer.sourceOffset = 0;
-	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
-	 DMATransfer.sourceLastAdjust = 0;
-
-	 DMATransfer.destinationAddress = (uint32_t)ADCSamples;
-	 DMATransfer.destinationOffset = 2;
-	 DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
-	 DMATransfer.destinationLastAdjust= -1*sizeof(ADCSamples);
-
-	 DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
-	 DMATransfer.minorLoopBytes = 2;
-
-	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
-	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
-	 //DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
-/*
-
-	DAC_Init(DAC_0,DAC_VREF_2);
-	DAC_Enable(DAC_0);
+	//	Configure PIT0 timer to trigger DMA copy from sine table to DAC
+	PIT_SetTimerPeriod (DAC_TIMER, T1);
 
 
-	PIT_Config PITConfig;
-	PITConfig.debugModeEnable=true;
-	PIT_Init(&PITConfig);
-	PIT_Enable();
+	//	Configure PIT1 timer to interrupt periodically and modulate every bit
+	PIT_SetTimerPeriod (MODULATION_TIMER, 41666);
+	PIT_TimerIntrruptEnable(MODULATION_TIMER, true);
+	PIT_SetTimerIntrruptHandler(MODULATION_TIMER,&modulate, NULL);
 
-    PIT_SetTimerPeriod (PIT_CHNL_0, T1);
-	//PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
-	PIT_TimerEnable(PIT_CHNL_0, true);
+	// 								OUTPUT
 
-	// Set periodic interrupt to modulate
-	PIT_SetTimerPeriod (PIT_CHNL_1, 41666);
-	PIT_TimerIntrruptEnable(PIT_CHNL_1, true);
-	PIT_SetTimerIntrruptHandler(PIT_CHNL_1,&modulate, NULL);
-	PIT_TimerEnable(PIT_CHNL_1, true);
-*/
-	// Init ADC
-	ADC_Init(ADC_0);
-	ADC_setHardwareTrigger(ADC_0);
-	ADC_enableInterrupts(ADC_0);
+	// Configure ADC channel to sample input signal
+	ADC_ChannelConfig ADCchannelConfig;
+	ADC_GetDefaultChannelConfig(&ADCchannelConfig);
+	ADCchannelConfig.InterruptsEnable = true;
+	ADC_SetChannelConfig(ADC_0,ADC_ChannelA,&ADCchannelConfig);
 
-	// PDB module to trigger ADC periodically
-	PDB_Config PDBconfig;
-	PDB_GetDefaultConfig(&PDBconfig);
-	PDBconfig.MODValue = ((BUS_CLOCK/SAMPLE_FREQ)+0.5);
-	PDB_Init(&PDBconfig);
-
-	PDB_SetADCTriggerDelay(PDB_Channel0,PDB_PreTrigger0, 1500);
+	// Configure PDB to trigger ADC conversions periodically
+	PDB_SetADCTriggerDelay(PDB_Channel0,PDB_PreTrigger0, 1500); // This delay value doesnt matter
 	PDB_EnableADCTrigger(PDB_Channel0,PDB_PreTrigger0,true);
 	PDB_DoLoadValues();
+
+/*
+	// Configure DMA1 to copy from ADC to buffer
+	DMAMUX_SetSource(ADC_DMA_CHANNEL,DMAMUX_ADC0);
+	DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
+
+	DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0,ADC_ChannelA);
+	DMATransfer.sourceOffset = 0;
+	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+	DMATransfer.sourceLastAdjust = 0;
+
+	DMATransfer.destinationAddress = (uint32_t)ADCSamples;
+	DMATransfer.destinationOffset = 2;
+	DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+	DMATransfer.destinationLastAdjust= -1*sizeof(ADCSamples);
+
+	DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
+	DMATransfer.minorLoopBytes = 2;
+
+	DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
+	DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
+*/
+
+	// Start timers to start output signal and modulation
+	PIT_TimerEnable(DAC_TIMER, true);
+	PIT_TimerEnable(MODULATION_TIMER, true);
+
+
+	// Trigger PDB to start ADC sampling (and DMA requests)
 	PDB_SoftwareTrigger();
 
+}
+void DMA0_IRQHandler()
+{
+	int i=0;
+	i++;
+	if(i==0)
+		while(1);
 }
 
 void MODEM_SendData(uint8_t data)
 {
-	SET_TEST_PIN;
+	//SET_TEST_PIN;
 
 	// Disable interrupts while adding data to output buffer
-	PIT_TimerIntrruptEnable(PIT_CHNL_1, false);
+	PIT_TimerIntrruptEnable(MODULATION_TIMER, false);
 
 	// Start bit
 	outcomingBits[head]=BIT2PERIOD(0);
@@ -270,15 +303,15 @@ void MODEM_SendData(uint8_t data)
 	head = (head + 1)%bufferSize;
 
 	// Enable interrupts
-	PIT_TimerIntrruptEnable(PIT_CHNL_1, true);
+	PIT_TimerIntrruptEnable(MODULATION_TIMER, true);
 
-	CLEAR_TEST_PIN;
+	//CLEAR_TEST_PIN;
 }
 
 bool MODEM_ReceiveData(uint8_t * buffer, uint8_t * length)
 {
 
 
-
+	return true;
 }
 
