@@ -20,6 +20,7 @@ static IRQn_Type irqTable[]=DMA_CHN_IRQS;
 static DMAIrqFun_t DMAcallbacks[FSL_FEATURE_EDMA_DMAMUX_CHANNELS];
 void DMA_GetDefaultConfig(DMA_Config * config)
 {
+
 	config->enableContinuousLinkMode=false;
 	config->enableDebugMode = false;
 	config->enableHaltOnError = false;
@@ -29,6 +30,13 @@ void DMA_GetDefaultConfig(DMA_Config * config)
 
 void DMA_Init(DMA_Config *config)
 {
+#ifdef MEASURE_CPU_TIME
+	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
+	MEASURE_CPU_TIME_GPIO->PDDR |= (1<<MEASURE_CPU_TIME_PIN);
+	MEASURE_CPU_TIME_GPIO->PDOR &= ~(1<<MEASURE_CPU_TIME_PIN);
+#endif
+
+
 	SIM->SCGC7 |= SIM_SCGC7_DMA_MASK;
 
 	uint32_t temp=0;
@@ -127,6 +135,7 @@ void DMA_ModifySourceAddress(uint32_t channel, uint32_t newAddress)
 void DMA1_IRQHandler(void)//se podria hacer mas lindo
 {
 	SET_TEST_PIN;
+
 	DMA0->INT |= (1 << 1);
 	DMAcallbacks[0]();
 

@@ -3,16 +3,39 @@
 #include "Assert.h"
 #include "MK64F12_features.h"
 
-
 #include "GPIO.h"
 
 
+#define MEASURE_CPU_TIME
+#ifdef MEASURE_CPU_TIME
+	#include "hardware.h"
+	#define MEASURE_CPU_TIME_PORT PORTC
+	#define MEASURE_CPU_TIME_GPIO GPIOC
+	#define MEASURE_CPU_TIME_PIN	9
+	#define SET_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 1
+	#define CLEAR_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 0
+#else
+	#define SET_TEST_PIN
+	#define CLEAR_TEST_PIN
+#endif
+
+
+
+#define FTM_CHANNELS 8
 static FTM_Type * FTMs[] = FTM_BASE_PTRS;
-static FTMIrqFun_t FTM_ICCallback[FSL_FEATURE_FTM_CHANNEL_COUNTn(FTM0)];
+static FTMCaptureFun_t FTM_ICCallback[FTM_CHANNELS];
 
 
 void FTM_Init(FTM_Instance instance, FTM_Config * config)
 {
+
+#ifdef MEASURE_CPU_TIME
+	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
+	MEASURE_CPU_TIME_GPIO->PDDR |= (1<<MEASURE_CPU_TIME_PIN);
+	MEASURE_CPU_TIME_GPIO->PDOR &= ~(1<<MEASURE_CPU_TIME_PIN);
+#endif
+
+
 	ASSERT(instance < FSL_FEATURE_SOC_FTM_COUNT);
 
 	switch(instance)
@@ -37,6 +60,8 @@ void FTM_Init(FTM_Instance instance, FTM_Config * config)
 	FTM->SC |= FTM_SC_PS(config->prescale);
 	NVIC_ClearPendingIRQ(FTM0_IRQn);
 	NVIC_EnableIRQ(FTM0_IRQn);
+
+	NVIC_EnableIRQ(FTM1_IRQn);
 	//FTM->SC = FTM_SC_CLKS(config->clockSource) | FTM_SC_PS(config->prescale);
 
 
@@ -115,7 +140,9 @@ bool FTM_SetupInputCapture(FTM_Instance instance,FTM_InputCaptureConfig *config)
 
 	FTMs[instance]->FILTER|=FILTER_MASK_TABLE[config->channel];//CHANNEL 0
 	}
+
 	FTM_ICCallback[config->channel]=config->callback;
+
 	if(config->enableDMA == true)
 	{
 		FTMs[instance]->CONTROLS[config->channel].CnSC |= FTM_CnSC_DMA_MASK|FTM_CnSC_CHIE_MASK;
@@ -151,6 +178,13 @@ uint16_t FTM_GetModValue(FTM_Instance instance)
 	return (uint16_t) FTMs[instance]->MOD;
 }
 
+
+void FTM_ClearCount(FTM_Instance instance)
+{
+	FTMs[instance]->CNT=0;
+}
+
+
 /*
 void FTM0_IRQHandler(void)
 {
@@ -160,11 +194,18 @@ void FTM0_IRQHandler(void)
 
 		GPIOB->PTOR = 1<<18;
 	}
-}
+}*/
 void FTM1_IRQHandler(void)
 {
+	SET_TEST_PIN;
 
+	FTMs[FTM_1]->CONTROLS[0].CnSC &=  ~FTM_CnSC_CHF_MASK;
+	FTM_ICCallback[0](FTMs[FTM_1]->CONTROLS[0].CnV);
+
+	CLEAR_TEST_PIN;
 }
+
+/*
 void FTM2_IRQHandler(void)
 {
 

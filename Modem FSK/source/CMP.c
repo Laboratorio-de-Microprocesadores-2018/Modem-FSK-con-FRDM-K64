@@ -43,9 +43,15 @@ void CMP_Init(CMP_Instance n, CMP_Config * config)
 void CMP_SetOutputDestination(CMP_Output o)
 {
 	if(o==CMP_OUT_FTM1_CH0)
-		SIM->SOPT4 |= SIM_SOPT4_FTM1CH0SRC_MASK;
+	{
+		SIM->SOPT4 &= ~(SIM_SOPT4_FTM1CH0SRC_MASK);
+		SIM->SOPT4 |=SIM_SOPT4_FTM1CH0SRC(1);
+	}
 	else if(o==CMP_OUT_FTM2_CH0)
-		SIM->SOPT4 |= SIM_SOPT4_FTM2CH0SRC_MASK;
+	{
+		SIM->SOPT4 &= ~(SIM_SOPT4_FTM2CH0SRC_MASK);
+		SIM->SOPT4|= SIM_SOPT4_FTM2CH0SRC(1);
+	}
 
 }
 

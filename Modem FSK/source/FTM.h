@@ -43,7 +43,7 @@ PTD3  Alt4 FTM3_CH3
 */
 
 
-typedef void (*FTMIrqFun_t)(void);
+typedef void (*FTMCaptureFun_t)(uint16_t);
 typedef enum{FTM_0,FTM_1,FTM_2,FTM_3}FTM_Instance;
 
 typedef enum{FTM_NO_CLOCK,
@@ -103,7 +103,7 @@ typedef struct{
 
 typedef struct {
 	FTM_Channel channel;
-	FTMIrqFun_t callback;
+	FTMCaptureFun_t callback;
 	uint16_t mod;
 	bool enableDMA;
 	FTM_InputCaptureMode mode;
@@ -118,4 +118,5 @@ void FTM_EnableClock(FTM_Instance instance);
 bool FTM_SetupInputCapture(FTM_Instance instance,FTM_InputCaptureConfig *config);
 uint32_t FTM_GetCnVAddress(FTM_Instance 	instance,FTM_Channel channel);
 uint16_t FTM_GetModValue(FTM_Instance instance);
+void FTM_ClearCount(FTM_Instance instance);
 #endif /* FTM_H_ */
