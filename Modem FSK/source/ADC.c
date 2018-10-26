@@ -4,57 +4,14 @@
 #include "GPIO.h"
 #include "DAC.h"
 
-//#include "CircularBuffer.h"
-
-#define BUFFER_SIZE		(100)
 
 static ADC_Type * ADCs[] = ADC_BASE_PTRS;
-
-#define FS		13200;
-#define DELTA	6 //(ceil((446e-6)/(1/FS)));
-#define DATA_BUFFER_SIZE	(256)
-typedef struct
-{
-	float data[DATA_BUFFER_SIZE];     /** Pointer to statically reserved memory array. */
-//	char * const buffer_end; /** Pointer to end of the array. */
-	uint16_t head;	         /** Pointer to the head of the buffer. */
-	uint16_t tail;	         /** Pointer to the tail of the buffer. */
-	uint16_t capacity;            /** Maximum number of elements in the buffer. */
-	uint16_t count;               /** Number of elements in the buffer. */
-//	uint16_t size;                /** Size of each element in the buffer. */
-} MODEMCircularBuffer;
-
-
-
-float h[] = {0.000184258321387766,	-0.00221281271600225,	-0.00875721735248610,	-0.0157935638369741,	-0.0125404257819552,
-				0.0140848855293968,	0.0690100446059607,	0.140515735542082,	0.202192975479381,	0.226632240418417,
-				0.202192975479381,	0.140515735542082,	0.0690100446059607,	0.0140848855293968,	-0.0125404257819552,
-				-0.0157935638369741,	-0.00875721735248610,	-0.00221281271600225,	0.000184258321387766};
-
-uint16_t filterNum = sizeof(h)/sizeof(h[0]);
-
-
-
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
 /////////////////////////////////////////////////////////////////////////////////
 
 static void ADC_DefaultCallibration(ADC_Instance n);
 static void ADC_SetCallibration(ADC_Instance n);
-
-bool MOEDM_BuffInit(MODEMCircularBuffer *this);
-bool MODEM_BuffPush(MODEMCircularBuffer *this, float data);
-bool MODEM_BuffPop(MODEMCircularBuffer *this,float *data);
-void MODEM_BuffFlush(MODEMCircularBuffer * this);
-uint16_t MODEM_BuffNumel(MODEMCircularBuffer *this);
-bool MODEM_BuffIsEmpty(MODEMCircularBuffer *this);
-bool MODEM_BuffIsFull(MODEMCircularBuffer *this);
-
-
-
-
-
-
 
 
 
@@ -103,7 +60,7 @@ void ADC_Init(ADC_Instance n, ADC_Config * config)
 	// By default disable continuous conversion
 	ADCs[n]->SC3 &= ~ADC_SC3_ADCO(1);
 
-//	pinMode(PORTNUM2PIN(PC,5),OUTPUT);
+	pinMode(PORTNUM2PIN(PC,5),OUTPUT);
 }
 void ADC_SetChannelConfig(ADC_Instance n,ADC_Channel m,ADC_ChannelConfig * config)
 {
@@ -141,64 +98,6 @@ uint32_t ADC_GetDataResultAddress(ADC_Instance n,ADC_Channel m)
 	return (uint32_t)&(ADCs[n]->R[m]);
 }
 
-
-void ADC0_IRQHandler(void){
-
-	digitalToggle(PORTNUM2PIN(PC,5));
-//
-	static MODEMCircularBuffer xBuffer;
-	static MODEMCircularBuffer mBuffer;
-	static MODEMCircularBuffer dBuffer;
-	if(MODEM_BuffIsEmpty(&xBuffer))
-	{
-		ASSERT(MOEDM_BuffInit(&xBuffer));
-		ASSERT(MOEDM_BuffInit(&mBuffer));
-		ASSERT(MOEDM_BuffInit(&dBuffer));
-	}
-//	if(mBuffer.count > 15)
-//		digitalToggle(PORTNUM2PIN(PC,5));
-
-	float xn = (float)ADCs[0]->R[0]/1024.0*3.3-1.65;
-
-	ASSERT(MODEM_BuffPush(&xBuffer, xn));
-
-	if(xBuffer.count > DELTA)
-	{
-		float mn = xBuffer.data[(xBuffer.tail + DELTA)%xBuffer.capacity] * xBuffer.data[xBuffer.tail]; //Aca debería poder mirar los elmentos dentro del buffer circular.
-		ASSERT(MODEM_BuffPush(&mBuffer, mn));
-		if((mBuffer.count) > filterNum)
-		{
-			float dn = 0;
-			uint16_t firstSample = mBuffer.tail;
-
-			for(uint16_t timeIndex = firstSample; timeIndex < firstSample + filterNum; timeIndex++)
-				dn += ((mBuffer.data[(timeIndex)%xBuffer.capacity]) * (h[filterNum - (timeIndex - firstSample) - 1]));
-
-			ASSERT(MODEM_BuffPush(&dBuffer, dn));
-
-			float mdata;
-			ASSERT(MODEM_BuffPop(&mBuffer, &mdata));
-			if(MODEM_BuffIsFull(&dBuffer))
-			{
-				float ddata;
-				ASSERT(MODEM_BuffPop(&dBuffer, &ddata));
-			}
-		}
-
-		float xdata;
-		ASSERT(MODEM_BuffPop(&xBuffer, &xdata));
-	}
-
-	float printVal = dBuffer.data[dBuffer.tail];
-//	uint16_t printVal = xBuffer.data[xBuffer.tail];
-	//DAC_WriteValue(DAC_0,(uint16_t)((printVal+1.65)*1024.0/3.3));
-	if(printVal>0)
-		DAC_WriteValue(DAC_0,0);
-	else
-		DAC_WriteValue(DAC_0,1024);
-	digitalToggle(PORTNUM2PIN(PC,5));
-
-}
 
 
 void ADC_GetDefaultChannelConfig(ADC_ChannelConfig * config)
@@ -265,61 +164,4 @@ void ADC_SetCallibration(ADC_Instance n){
 
 	ADCs[n]->PG = PGVar;
 	ADCs[n]->MG = MGVar;
-}
-
-
-
-bool MOEDM_BuffInit(MODEMCircularBuffer *this)
-{
-	this->capacity = DATA_BUFFER_SIZE;
-	this->count = 0;
-	this->head = 0;
-	this->tail = 0;
-
-	return true;
-}
-bool MODEM_BuffPush(MODEMCircularBuffer *this, float data)
-{
-	if(this->count == this->capacity)
-		return false;
-	else
-	{
-		this->data[this->head] = data;
-		this->head ++;
-	    if(this->head == this->capacity)
-	    	this->head = 0;
-	    this->count++;
-	    return true;
-	}
-}
-bool MODEM_BuffPop(MODEMCircularBuffer *this,float *data)
-{
-	if(this->count == 0)
-		return false;
-	else
-	{
-		*data = this->data[this->tail];
-		this->tail ++;
-		if(this->tail == this->capacity)
-			this->tail = 0;
-		this->count--;
-		return true;
-	}
-}
-void MODEM_BuffFlush(MODEMCircularBuffer * this)
-{
-	this->head = this->tail;
-	this->count = 0;
-}
-uint16_t MODEM_BuffNumel(MODEMCircularBuffer *this)
-{
-	return this->count;
-}
-bool MODEM_BuffIsEmpty(MODEMCircularBuffer *this)
-{
-	return (this->count == 0);
-}
-bool MODEM_BuffIsFull(MODEMCircularBuffer *this)
-{
-	return (this->count == this->capacity);
 }

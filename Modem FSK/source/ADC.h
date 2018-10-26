@@ -3,6 +3,13 @@
 
 #include "stdint.h"
 
+
+#define ADC_BIT_RESOLUTION 	(10)
+#define ADC_RESOLUTION		(1024.0)
+#define ADC_VCC				(3.3)
+#define ADC_GND				(0.0)
+#define ADC_OFFSET			(ADC_VCC/2.0)
+
 typedef enum {ADC_0, ADC_1}ADC_Instance;
 typedef enum {ADC_ChannelA,ADC_ChannelB} ADC_Channel;
 

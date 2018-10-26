@@ -68,6 +68,7 @@ void App_Init (void)
 
 void App_Run (void)
 {
+
 /*
 	static uint64_t time;
 	if((millis()-time)>=1000)
