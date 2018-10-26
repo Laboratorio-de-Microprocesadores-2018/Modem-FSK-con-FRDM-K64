@@ -201,3 +201,42 @@ void DAC_ClearFlag(DAC_Instance n, DAC_Flag flag)
 	DACs[n]->SR&= ~flag;
 }
 
+
+void DAC0_IRQHandler()
+{
+	//digitalToggle(PORTNUM2PIN(PC,10));
+
+	//static uint8_t index = 0;
+
+	//DAC_WriteValue(DAC_0,signal[index++]);
+
+	/*if(DAC_GetFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP)==true)
+	{
+		for(int n=DAC_BUFFER_SIZE-DAC_WATERMARK-1;n<DAC_BUFFER_SIZE; n++)
+			DAC_SetBufferValue (DAC_0, n, signal[index+n]);
+
+		index = (index + DAC_BUFFER_SIZE)%N_SAMPLE;
+
+		DAC_ClearFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP);
+	}
+	else if(DAC_GetFlag(DAC_0,DAC_INTERRUPT_WATERMARK)==true)
+	{
+		for(int n=0;n<DAC_BUFFER_SIZE-DAC_WATERMARK-1; n++)
+				DAC_SetBufferValue (DAC_0, n, signal[index+n]);
+
+		DAC_ClearFlag(DAC_0,DAC_INTERRUPT_WATERMARK);
+	}
+	digitalToggle(PORTNUM2PIN(PC,10));*/
+
+	/*for(int n=0;n<DAC_BUFFER_SIZE; n++)
+		DAC_SetBufferValue (DAC_0, n, signal[index+n]);
+
+	index = (index + DAC_BUFFER_SIZE)%N_SAMPLE;
+
+	// Reset pointer
+	//DAC_SetBufferPointer (DAC_0,0);
+
+	DAC_ClearFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP);*/
+
+
+}
