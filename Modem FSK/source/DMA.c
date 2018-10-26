@@ -1,10 +1,23 @@
 #include "DMA.h"
 #include "Assert.h"
-#include "MK64F12.h"
-#include "MK64F12_features.h"
+#include "hardware.h"
+
+
+#define MEASURE_CPU_TIME
+#ifdef MEASURE_CPU_TIME
+	#define MEASURE_CPU_TIME_PORT PORTC
+	#define MEASURE_CPU_TIME_GPIO GPIOC
+	#define MEASURE_CPU_TIME_PIN	9
+	#define SET_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 1
+	#define CLEAR_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 0
+#else
+	#define SET_TEST_PIN
+	#define CLEAR_TEST_PIN
+#endif
+
 
 static IRQn_Type irqTable[]=DMA_CHN_IRQS;
-
+static DMAIrqFun_t DMAcallbacks[FSL_FEATURE_EDMA_DMAMUX_CHANNELS];
 void DMA_GetDefaultConfig(DMA_Config * config)
 {
 	config->enableContinuousLinkMode=false;
@@ -29,6 +42,8 @@ void DMA_Init(DMA_Config *config)
 		temp |= DMA_CR_ERCA_MASK;
 
 	DMA0->CR = temp;
+	DMA0->TCD[1].CSR=0;
+
 }
 
 void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
@@ -52,6 +67,7 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 	DMA0->TCD[channel].CITER_ELINKNO = DMA_CITER_ELINKNO_CITER(config->majorLoopCounts);
 	DMA0->TCD[channel].BITER_ELINKNO = DMA_BITER_ELINKNO_BITER(config->majorLoopCounts);
 
+	DMA0->CR|=DMA_CR_HOE_MASK;
 
 }
 
@@ -61,8 +77,8 @@ void DMA_EnableInterrupts (uint32_t channel)
 
 	/**POR AHORA PONGO IGUAL ACA ASI SE LIMPIA*/
 	/*		CAMBIARLO DESPUES								*/
-	DMA0->TCD[channel].CSR=DMA_CSR_INTMAJOR_MASK|DMA_CSR_DREQ_MASK;//nuevo, la segunda mascara para que no siga trigereando requests
-	NVIC_ClearPendingIRQ(DMA1_IRQn);//nuevo, ver si se saca
+	DMA0->TCD[channel].CSR|=DMA_CSR_INTMAJOR_MASK;//|DMA_CSR_DREQ_MASK;//nuevo, la segunda mascara para que no siga trigereando requests
+//	NVIC_ClearPendingIRQ(DMA1_IRQn);//nuevo, ver si se saca
 	NVIC_EnableIRQ(irqTable[channel]);
 }
 
@@ -94,3 +110,30 @@ void DMA_DisableChannelRequest (uint32_t channel)
 	DMA0->ERQ &= ~(1<<channel);
 }
 
+void DMA_SetCallback(uint32_t channel,DMAIrqFun_t majorIntCallback)//se podria hacer mas lindo
+{
+	DMAcallbacks[0]=majorIntCallback;
+}
+
+void DMA_ModifySourceAddress(uint32_t channel, uint32_t newAddress)
+{
+	if(newAddress!=0)
+	{
+		DMA0->TCD[channel].SADDR = newAddress;
+	}
+}
+
+
+void DMA1_IRQHandler(void)//se podria hacer mas lindo
+{
+	SET_TEST_PIN;
+	DMA0->INT |= (1 << 1);
+	DMAcallbacks[0]();
+
+	CLEAR_TEST_PIN;
+}
+
+/*void DMA_Error_IRQHandler(void)
+{
+	int a=0; //Si entró acá es porque hay algo mal configurado
+}*/

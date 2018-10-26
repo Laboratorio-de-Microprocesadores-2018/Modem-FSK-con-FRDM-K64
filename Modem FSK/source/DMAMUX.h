@@ -4,7 +4,7 @@
 #include "stdbool.h"
 
 typedef enum{
-	DMAMUX_UART0_RX,
+	DMAMUX_UART0_RX=2,
 	DMAMUX_UART0_TX,
 	DMAMUX_UART1_RX,
 	DMAMUX_UART1_TX,
