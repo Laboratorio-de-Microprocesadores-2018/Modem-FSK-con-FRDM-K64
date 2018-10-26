@@ -4,6 +4,8 @@
 #include "stdbool.h"
 
 typedef enum{
+	DMAMUX_DISABLED,
+	DMAMUX_RESERVED,
 	DMAMUX_UART0_RX,
 	DMAMUX_UART0_TX,
 	DMAMUX_UART1_RX,

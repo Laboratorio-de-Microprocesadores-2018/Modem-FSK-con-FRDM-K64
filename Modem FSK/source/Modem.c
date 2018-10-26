@@ -13,6 +13,8 @@
 
 
 #define BUS_CLOCK 50000000
+#define SAMPLE_FREQ 13200
+
 #define N_SAMPLE (256)
 #define F1 (1100)
 #define F2 (2200)
@@ -70,7 +72,7 @@ void modulate(void * data);
 
 void modulate(void * data)
 {
-	SET_TEST_PIN;
+	//SET_TEST_PIN;
 
 	// If no data in buffer, idle state is MARK
 	if(bufferEmpty)
@@ -81,7 +83,7 @@ void modulate(void * data)
 		tail = (tail + 1)%bufferSize;
 	}
 
-	CLEAR_TEST_PIN;
+	//CLEAR_TEST_PIN;
 }
 
 
@@ -144,7 +146,7 @@ void comparator(uint8_t x[SAMPLE_NUM], uint8_t out[BITS_NUM])
 
 */
 
-void MODEM_Init()
+void MODEM_Init(MODEM_Config * config)
 {
 #ifdef MEASURE_CPU_TIME
 	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
@@ -183,9 +185,28 @@ void MODEM_Init()
 	DMATransfer.sourceLastAdjust = -1*sizeof(signal);
 	DMATransfer.destinationLastAdjust = 0;
 	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
-	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
+	//DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
 
+<<<<<<< HEAD
+=======
+	 DMATransfer.sourceAddress = (uint32_t)ADC_GetDataResultAddress(ADC_0);
+	 DMATransfer.sourceOffset = 0;
+	 DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+	 DMATransfer.sourceLastAdjust = 0;
+
+	 DMATransfer.destinationAddress = (uint32_t)ADCSamples;
+	 DMATransfer.destinationOffset = 2;
+	 DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+	 DMATransfer.destinationLastAdjust= -1*sizeof(ADCSamples);
+
+	 DMATransfer.majorLoopCounts = sizeof(ADCSamples)/sizeof(ADCSamples[0]);
+	 DMATransfer.minorLoopBytes = 2;
+
+	 DMA_SetTransferConfig(ADC_DMA_CHANNEL,&DMATransfer);
+	 DMA_EnableChannelRequest (ADC_DMA_CHANNEL);
+	 //DMAMUX_EnableChannel(ADC_DMA_CHANNEL,false);
+>>>>>>> branch 'master' of https://github.com/tlifschitz/Modem-FSK-con-FRDM-K64.git
 /*
 	// Configure DMA1 to copy from ADC to buffer
 	DMAMUX_SetSource(1,DMAMUX_ADC0);
@@ -219,7 +240,7 @@ void MODEM_Init()
 	PIT_Enable();
 
     PIT_SetTimerPeriod (PIT_CHNL_0, T1);
-	PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
+	//PIT_TimerIntrruptEnable(PIT_CHNL_0, true); // Probar comentar
 	PIT_TimerEnable(PIT_CHNL_0, true);
 
 	// Set periodic interrupt to modulate
@@ -229,22 +250,26 @@ void MODEM_Init()
 	PIT_TimerEnable(PIT_CHNL_1, true);
 */
 
+
 	ADC_Config ADCConfiguration;
 	ADC_GetDefaultConfig(&ADCConfiguration);
 	ADC_Init(ADC_0, &ADCConfiguration);
 	ADC_SetHardwareTrigger(ADC_0);
 	ADC_EnableInterrupts(ADC_0);
 
-	PDB_Config config;
-	PDB_GetDefaultConfig(&config);
-	PDB_Init(&config);
 
-	PDB_EnableADCTrigger();
-//	PDB_EnableInterrupts(0);
+	// PDB module to trigger ADC periodically
+	PDB_Config PDBconfig;
+	PDB_GetDefaultConfig(&PDBconfig);
+	PDBconfig.MODValue = ((BUS_CLOCK/SAMPLE_FREQ)+0.5);
+	PDB_Init(&PDBconfig);
 
-	PDB_SetChannelDelay(0, 0, 1500);
-	PDB_LoadValues();
-	PDB_Trigger();
+
+
+	PDB_SetADCTriggerDelay(PDB_Channel0,PDB_PreTrigger0, 1500);
+	PDB_EnableADCTrigger(PDB_Channel0,PDB_PreTrigger0,true);
+	PDB_DoLoadValues();
+	PDB_SoftwareTrigger();
 
 }
 
