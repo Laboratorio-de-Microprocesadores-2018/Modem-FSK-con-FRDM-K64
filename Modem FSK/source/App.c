@@ -79,7 +79,7 @@ void App_Init (void)
 	UARTconfig.RxFIFOEnable = true;
 	UARTconfig.TxFIFOEnable = true;
 	UARTconfig.loopBackEnable = false;
-//	UART_Init(&UARTconfig);
+	UART_Init(&UARTconfig);
 
 
 
@@ -151,9 +151,9 @@ void App_Run (void)
 		}
 	}*/
 
-	//static uint8_t rxByte;
-	//if(UART_ReceiveByte(&rxByte))
-	//	MODEM_SendData(rxByte);
+	static uint8_t rxByte;
+	if(UART_ReceiveByte(&rxByte))
+		MODEM_SendData(rxByte);
 
 /*
 // Mas o menos asi seria el main loop
