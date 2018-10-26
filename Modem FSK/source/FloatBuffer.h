@@ -14,19 +14,18 @@
 
 typedef struct{
 	float * data;
-	uint32_t head,tail;
+	uint32_t head;
 	uint32_t size;
 }FloatBuffer;
 
 /**
 *
 */
-#define NEW_FLOAT_BUFFER(name,_size) \
-	static float name##_data[_size]; \
+#define NEW_FLOAT_BUFFER(name,size_) \
+	static float name##_data[(size_)]; \
 	static FloatBuffer name = {	.data= name##_data, \
 								.head=0, 			\
-								.tail=0,			\
-								.size=_size          }
+								.size=(size_)          }
 
 /**
 *
