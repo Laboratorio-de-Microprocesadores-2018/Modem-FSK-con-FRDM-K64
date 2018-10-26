@@ -223,6 +223,7 @@ static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2, uint16_t size,uin
 	{
 		//DUTY VALUES
 		a=(1.0+sin(2*PI*(double)i/(double)size))/2.0;
+		//CnV VALUES
 		arr1[2*i]=(uint16_t)((a*(mod-2))+1+0.5);
 		arr1[(2*i)+1]=arr1[2*i];
 	}
