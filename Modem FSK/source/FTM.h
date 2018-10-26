@@ -89,15 +89,17 @@ typedef struct{
 	FTM_Channel channel;
 	FTM_PWMMode mode;
 	bool enableDMA;
-	uint32_t PWMFreq;
-	uint8_t dutyCyclePercent;					//agregue a partir de esto
+	uint16_t mod;
+	uint8_t CnV;					//agregue a partir de esto
 	//se podria agregar level para poner high true o low true pulse
 }FTM_PwmConfig;
 
 void FTM_GetDefaultConfig(FTM_Config * config);
 void FTM_Init(FTM_Instance instance, FTM_Config * config);
 bool FTM_SetupPwm(FTM_Instance 	instance,FTM_PwmConfig * config);
-void FTM_UpdatePwmDutycycle(FTM_Instance 	instance,FTM_Channel channel,uint8_t dutyCyclePercent);//en principio no seria necesaria
+void FTM_EnableOverflowInterrupt(FTM_Instance instance);
+void FTM_EnableClock(FTM_Instance instance);
+//void FTM_UpdatePwmDutycycle(FTM_Instance 	instance,FTM_Channel channel,uint8_t dutyCyclePercent);//en principio no seria necesaria
 uint32_t FTM_GetCnVAddress(FTM_Instance 	instance,FTM_Channel channel);
 uint16_t FTM_GetModValue(FTM_Instance instance);
 #endif /* FTM_H_ */

@@ -164,6 +164,7 @@ void MODEM_Init(MODEM_Config * config)
 		signal[i]= s;
 	}
 
+
 	// 						MODULES INITIALIZATION
 
 	//----------------------------- DMA -------------------------------//
@@ -172,6 +173,7 @@ void MODEM_Init(MODEM_Config * config)
 	DMAconfig.enableDebugMode=false;
 	DMA_Init(&DMAconfig);
 	DMAMUX_Init();
+
 
 	//----------------------------- DAC -------------------------------//
 	DAC_Init(DAC_0,DAC_VREF_2);
@@ -199,6 +201,7 @@ void MODEM_Init(MODEM_Config * config)
 	// 								INPUT
 	// Configure DMA0 to copy from sine table to DAC
 	DMAMUX_SetSource(DAC_DMA_CHANNEL,DMAMUX_AlwaysEnabled0);
+
 	DMAMUX_EnableChannel(DAC_DMA_CHANNEL,true);
 
 	DMA_TransferConfig DMATransfer;
@@ -215,8 +218,10 @@ void MODEM_Init(MODEM_Config * config)
 	DMA_SetTransferConfig(DAC_DMA_CHANNEL,&DMATransfer);
 	DMA_EnableChannelRequest (DAC_DMA_CHANNEL);
 
+
 	//	Configure PIT0 timer to trigger DMA copy from sine table to DAC
 	PIT_SetTimerPeriod (DAC_TIMER, T1);
+
 
 
 	//	Configure PIT1 timer to interrupt periodically and modulate every bit
@@ -226,11 +231,13 @@ void MODEM_Init(MODEM_Config * config)
 
 	// 								OUTPUT
 
+
 	// Configure ADC channel to sample input signal
 	ADC_ChannelConfig ADCchannelConfig;
 	ADC_GetDefaultChannelConfig(&ADCchannelConfig);
 	ADCchannelConfig.InterruptsEnable = true;
 	ADC_SetChannelConfig(ADC_0,ADC_ChannelA,&ADCchannelConfig);
+
 
 	// Configure PDB to trigger ADC conversions periodically
 	PDB_SetADCTriggerDelay(PDB_Channel0,PDB_PreTrigger0, 1500); // This delay value doesnt matter
@@ -266,6 +273,7 @@ void MODEM_Init(MODEM_Config * config)
 
 	// Trigger PDB to start ADC sampling (and DMA requests)
 	PDB_SoftwareTrigger();
+
 
 }
 void DMA0_IRQHandler()

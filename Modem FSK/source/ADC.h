@@ -56,6 +56,11 @@ typedef enum{ADC_8OR9_BITS, ADC_12OR13_BITS, ADC_10OR11_BITS, ADC_16_BITS}ADC_Re
 typedef enum{ADC_BUS_CLK, ADC_HALF_BUS_CLK, ADC_ALTERNATE_CLK, ADC_ASYNCHRONOUS_CLK}ADC_InClk;
 
 
+/* ADC_SC3 enums*/
+typedef enum{ADC_HARDWARE_AVG_ON, ADC_HARDWARE_AVG_OFF}ADC_HardwareAverage;
+typedef enum{ADC_4SAMPLES_AVG, ADC_8SAMPLES_AVG, ADC_16SAMPLES_AVG, ADC_32SAMPLES_AVG}ADC_AverageResolution;
+
+
 typedef struct{
 	/**< ADC_CFG1. */
 	ADC_PowerConsumption PowerConsumtion;
@@ -68,7 +73,12 @@ typedef struct{
 	ADC_Trigger Trigger;
 	ADC_DMAEnable DMAEnable;
 	ADC_VRefSel VoltageReference;
+
+	/**< ADC_SC3. */
+	ADC_HardwareAverage HardwareAverage;
+	ADC_AverageResolution AverageResolution;
 }ADC_Config;
+
 
 typedef struct
 {

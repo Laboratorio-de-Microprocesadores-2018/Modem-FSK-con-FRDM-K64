@@ -20,6 +20,7 @@
 #include "SysTick.h"
 #include "PORT.h"
 
+
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
@@ -47,13 +48,9 @@ static uint8_t UartRxBuffer[10];
 
 
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                         Global function prototypes                          //
 /////////////////////////////////////////////////////////////////////////////////
-
-//uint8_t srcARR[] = {1,2,3,4,5};
-//uint8_t destARR[5]={0,0,0,0,0};
 
 
 #define BIT_FREC 1200
@@ -61,6 +58,10 @@ static uint8_t UartRxBuffer[10];
 
 void App_Init (void)
 {
+
+ PWMGen_Init();
+
+ sysTickInit();
 
 	UART_Config UARTconfig;
 	UARTconfig.baud = UART_Baud_1200_Bps;
@@ -73,12 +74,9 @@ void App_Init (void)
 	UART_Init(&UARTconfig);
 
 
-	MODEM_Config MODEMconfig;
-
-	MODEM_Init(&MODEMconfig);
-
 
 	//sysTickInit();
+
 	//pinMode(PIN_SW2,INPUT);
 	//pinMode(PIN_LED_GREEN,OUTPUT);
 
@@ -119,24 +117,13 @@ static uint64_t lastDebounceTime;
 void App_Run (void)
 {
 /*
-	if((millis()-lastDebounceTime)>=500)
+	static uint64_t time;
+	if((millis()-time)>=1000)
 	{
-		lastDebounceTime = millis();
-		MODEM_SendData(0x01);
-		uint64_t t = millis();
-		while((millis()-t)<5);
-
-		MODEM_SendData(0x02);
-		t = millis();
-		while((millis()-t)<9);
-
-		MODEM_SendData(0x03);
-		t = millis();
-		while((millis()-t)<9);
-
-		MODEM_SendData(0x04);
-		digitalToggle(PIN_LED_GREEN);
+		time = millis();
+		PWMGen_SendData('A');
 	}
+
 */
 
 	/*

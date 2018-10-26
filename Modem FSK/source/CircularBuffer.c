@@ -54,6 +54,7 @@ int numel(CircularBuffer *this)
 	return this->count;
 }
 
+
 bool isEmpty(CircularBuffer *this)
 {
 	return (this->count == 0);
