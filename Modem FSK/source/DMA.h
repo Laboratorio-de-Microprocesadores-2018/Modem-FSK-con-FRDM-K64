@@ -1,9 +1,23 @@
+/////////////////////////////////////////////////////////////////////////////////
+//                         													   //
+//          Grupo 3 - Laboratorio de Microprocesadores - ITBA - 2018           //
+//	                                                                           //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifndef DMA_H_
 #define DMA_H_
-
+/**
+ * @file     DMA.h
+ * @brief    DMA driver to configure and set automatic data transfers
+ */
+/////////////////////////////////////////////////////////////////////////////////
+//                             Included header files                           //
+/////////////////////////////////////////////////////////////////////////////////
 #include "stdint.h"
 #include "stdbool.h"
-
+/////////////////////////////////////////////////////////////////////////////////
+//                    Enumerations, structures and typedefs                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 typedef void (*DMAIrqFun_t)(void);
 
@@ -129,11 +143,16 @@ typedef struct
     uint8_t channel;
     uint8_t flags;
 } DMA_Handle;
-
-
+/////////////////////////////////////////////////////////////////////////////////
+//                         Global function prototypes                          //
+/////////////////////////////////////////////////////////////////////////////////
+/**
+ * @brief Gives a default configuration for the DMA module
+ * @param config struct where the function will return the default configuration
+ */
 void DMA_GetDefaultConfig(DMA_Config * config);
 
-/*!
+/**
  * @brief Initializes DMA module
  *
  * Ungate the DMA clock and configure DMA peripheral.
@@ -141,23 +160,49 @@ void DMA_GetDefaultConfig(DMA_Config * config);
 void DMA_Init(DMA_Config *config);
 
 /**
- *
+ *	@brief Sets a a transfer configuration for a certain DMA channel
+ *	@param channel used
+ *	@param config , struct containing the configuration wished for the transfer
  */
 void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config);
 
-
+/**
+ * @brief enables interrupts in a desired channel
+ * @param channel
+ */
 void DMA_EnableInterrupts (uint32_t channel);
-
+/**
+ * @brief disables interrupts in a desired channel
+ * @param channel
+ */
 void DMA_DisableInterrupts (uint32_t channel);
-
+/**
+ * @brief software triggers the data transfer configured in a desired channel
+ * @param channel to trigger
+ */
 void DMA_TriggerChannelStart (uint32_t channel);
-
+/**
+ * @brief Enables DMA requests for the selected channel
+ * @param channel
+ */
 void DMA_EnableChannelRequest (uint32_t channel);
-
+/**
+ * @brief Disables DMA requests for the selected channel
+ * @param channel
+ */
 void DMA_DisableChannelRequest (uint32_t channel);
-
+/**
+ * @brief Sets a new source address for the DMA transfer for the selected channel
+ * @param channel
+ * @param newAddress
+ */
 void DMA_ModifySourceAddress(uint32_t channel, uint32_t newAddress);
-
+/**
+ * @brief Sets a callback to be executed when a transfer ended. The callback should
+ * be as quick as posible as it is called inside an interruption
+ * @param channel
+ * @param majorIntCallback   callback
+ */
 void DMA_SetCallback(uint32_t channel,DMAIrqFun_t majorIntCallback);
 
 #endif /* DMA_H_ */
