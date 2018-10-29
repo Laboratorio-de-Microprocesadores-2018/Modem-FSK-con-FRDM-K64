@@ -1,44 +1,25 @@
-
+/////////////////////////////////////////////////////////////////////////////////
+//                             Included header files                           //
+/////////////////////////////////////////////////////////////////////////////////
 #include "DAC.h"
-#include "MK64F12.h"
-#include "MK64F12_features.h"
+#include "hardware.h"
 #include "Assert.h"
+#include "CPUTimeMeasurement.h"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                       Constants and macro definitions                       //
+/////////////////////////////////////////////////////////////////////////////////
+#define DAC_DATL_DATA0_WIDTH (8)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                   Local variable definitions ('static')                     //
+/////////////////////////////////////////////////////////////////////////////////
 static DAC_Type * DACs[] = DAC_BASE_PTRS;
 static IRQn_Type DAC_IRQ[] = DAC_IRQS;
 
-
-#define DAC_DATL_DATA0_WIDTH (8)
-/*
-
-
-@brief Define the size of hardware buffer
- FSL_FEATURE_DAC_BUFFER_SIZE (16)
-
-@brief Define whether the buffer supports watermark event detection or not.
- FSL_FEATURE_DAC_HAS_WATERMARK_DETECTION (1)
-
-@brief Define whether the buffer supports watermark selection detection or not.
- FSL_FEATURE_DAC_HAS_WATERMARK_SELECTION (1)
-
-@brief Define whether the buffer supports watermark event 1 word before buffer upper limit.
- FSL_FEATURE_DAC_HAS_WATERMARK_1_WORD (1)
-
-@brief Define whether the buffer supports watermark event 2 words before buffer upper limit.
- FSL_FEATURE_DAC_HAS_WATERMARK_2_WORDS (1)
-
-@brief Define whether the buffer supports watermark event 3 words before buffer upper limit.
- FSL_FEATURE_DAC_HAS_WATERMARK_3_WORDS (1)
-
-@brief Define whether the buffer supports watermark event 4 words before buffer upper limit.
- FSL_FEATURE_DAC_HAS_WATERMARK_4_WORDS (1)
-
-@brief Define whether FIFO buffer mode is available or not.
- FSL_FEATURE_DAC_HAS_BUFFER_FIFO_MODE (0)
-
-@brief Define whether swing buffer mode is available or not..
- FSL_FEATURE_DAC_HAS_BUFFER_SWING_MODE (1)*/
-
+/////////////////////////////////////////////////////////////////////////////////
+//	                        	Function definitions						   //
+/////////////////////////////////////////////////////////////////////////////////
 void DAC_Init(DAC_Instance n,DAC_Vref vref)
 {
 	ASSERT(n<FSL_FEATURE_SOC_DAC_COUNT);
@@ -204,13 +185,11 @@ void DAC_ClearFlag(DAC_Instance n, DAC_Flag flag)
 
 void DAC0_IRQHandler()
 {
-	//digitalToggle(PORTNUM2PIN(PC,10));
+	/*
+	static uint8_t index = 0;
 
-	//static uint8_t index = 0;
-
-	//DAC_WriteValue(DAC_0,signal[index++]);
-
-	/*if(DAC_GetFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP)==true)
+	// Ping-pong buffer
+	if(DAC_GetFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP)==true)
 	{
 		for(int n=DAC_BUFFER_SIZE-DAC_WATERMARK-1;n<DAC_BUFFER_SIZE; n++)
 			DAC_SetBufferValue (DAC_0, n, signal[index+n]);
@@ -226,17 +205,5 @@ void DAC0_IRQHandler()
 
 		DAC_ClearFlag(DAC_0,DAC_INTERRUPT_WATERMARK);
 	}
-	digitalToggle(PORTNUM2PIN(PC,10));*/
-
-	/*for(int n=0;n<DAC_BUFFER_SIZE; n++)
-		DAC_SetBufferValue (DAC_0, n, signal[index+n]);
-
-	index = (index + DAC_BUFFER_SIZE)%N_SAMPLE;
-
-	// Reset pointer
-	//DAC_SetBufferPointer (DAC_0,0);
-
-	DAC_ClearFlag(DAC_0,DAC_INTERRUPT_POINTER_TOP);*/
-
-
+*/
 }

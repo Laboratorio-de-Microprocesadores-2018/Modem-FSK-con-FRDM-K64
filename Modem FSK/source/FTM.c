@@ -1,29 +1,15 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
-
 #include "FTM.h"
-#include "MK64F12.h"
+#include "hardware.h"
 #include "Assert.h"
-#include "MK64F12_features.h"
+#include "CPUTimeMeasurement.h"
 
-#include "GPIO.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
-#define MEASURE_CPU_TIME
-#ifdef MEASURE_CPU_TIME
-	#include "hardware.h"
-	#define MEASURE_CPU_TIME_PORT PORTC
-	#define MEASURE_CPU_TIME_GPIO GPIOC
-	#define MEASURE_CPU_TIME_PIN	9
-	#define SET_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 1
-	#define CLEAR_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 0
-#else
-	#define SET_TEST_PIN
-	#define CLEAR_TEST_PIN
-#endif
 
 #define FTM_CHANNELS 8
 
@@ -44,13 +30,6 @@ static FTMCaptureFun_t FTM_ICCallback[FTM_CHANNELS];
  */
 void FTM_Init(FTM_Instance instance, FTM_Config * config)
 {
-
-#ifdef MEASURE_CPU_TIME
-	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
-	MEASURE_CPU_TIME_GPIO->PDDR |= (1<<MEASURE_CPU_TIME_PIN);
-	MEASURE_CPU_TIME_GPIO->PDOR &= ~(1<<MEASURE_CPU_TIME_PIN);
-#endif
-
 
 	ASSERT(instance < FSL_FEATURE_SOC_FTM_COUNT);
 	//Clocking

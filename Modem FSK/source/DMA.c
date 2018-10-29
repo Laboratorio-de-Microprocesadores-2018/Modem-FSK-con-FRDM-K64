@@ -1,34 +1,21 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
-
 #include "DMA.h"
-#include "Assert.h"
 #include "hardware.h"
+#include "Assert.h"
+#include "CPUTimeMeasurement.h"
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define MEASURE_CPU_TIME
-#ifdef MEASURE_CPU_TIME
-	#define MEASURE_CPU_TIME_PORT PORTC
-	#define MEASURE_CPU_TIME_GPIO GPIOC
-	#define MEASURE_CPU_TIME_PIN	9
-	#define SET_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 1
-	#define CLEAR_TEST_PIN BITBAND_REG(MEASURE_CPU_TIME_GPIO->PDOR, MEASURE_CPU_TIME_PIN) = 0
-#else
-	#define SET_TEST_PIN
-	#define CLEAR_TEST_PIN
-#endif
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 static IRQn_Type irqTable[]=DMA_CHN_IRQS;
 static DMAIrqFun_t DMAcallbacks[FSL_FEATURE_EDMA_DMAMUX_CHANNELS];
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   	Local functions and global Services  			       //
@@ -165,7 +152,9 @@ void DMA_DisableChannelRequest (uint32_t channel)
  */
 void DMA_SetCallback(uint32_t channel,DMAIrqFun_t majorIntCallback)//se podria hacer mas lindo
 {
-	DMAcallbacks[0]=majorIntCallback;
+	ASSERT(channel<FSL_FEATURE_EDMA_MODULE_CHANNEL);
+
+	DMAcallbacks[channel]=majorIntCallback;
 }
 /**
  * @brief Sets a new source address for the DMA transfer for the selected channel
@@ -174,19 +163,38 @@ void DMA_SetCallback(uint32_t channel,DMAIrqFun_t majorIntCallback)//se podria h
  */
 void DMA_ModifySourceAddress(uint32_t channel, uint32_t newAddress)
 {
-	if(newAddress!=0)
-	{
-		DMA0->TCD[channel].SADDR = newAddress;
-	}
+	ASSERT(channel<FSL_FEATURE_EDMA_MODULE_CHANNEL);
+	ASSERT(newAddress!=0);
+
+	DMA0->TCD[channel].SADDR = newAddress;
 }
 
+
+void DMA0_IRQHandler(void)
+{
+	SET_TEST_PIN;
+
+	DMA0->INT |= (1 << 0);
+	DMAcallbacks[0]();
+
+	CLEAR_TEST_PIN;
+}
 
 void DMA1_IRQHandler(void)
 {
 	SET_TEST_PIN;
 
 	DMA0->INT |= (1 << 1);
-	DMAcallbacks[0]();
+	DMAcallbacks[1]();
+
+	CLEAR_TEST_PIN;
+}
+void DMA2_IRQHandler(void)
+{
+	SET_TEST_PIN;
+
+	DMA0->INT |= (1 << 2);
+	DMAcallbacks[2]();
 
 	CLEAR_TEST_PIN;
 }
