@@ -51,15 +51,6 @@
 /** Helper macro to map a bit to its respective samples table*/
 #define BIT2FTABLE(x) (x)==0 ? (uint32_t)CnVTableH : (uint32_t)CnVTableL
 
-<<<<<<< HEAD
-#define DMA_CHANNEL_USED 1
-#define PWM_FREC 98400
-#define PWM_FTM_INSTANCE FTM_0
-
-
-=======
-/** Choose either edge aligned or center aligned PWM */
->>>>>>> branch 'master' of https://github.com/tlifschitz/Modem-FSK-con-FRDM-K64.git
 //#define CPWM
 #ifdef CPWM
 #define MOD4PWM  (SYSTEM_CLOCK_FREC / (2*PWM_FREC*(1<<PS_USED)) )
@@ -121,8 +112,8 @@ static void DecInit(void);
  */
 void MODEM_Init(void)
 {
-	GenInit();
-	//DecInit();
+	//GenInit();
+	DecInit();
 }
 
 /**
