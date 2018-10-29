@@ -263,116 +263,6 @@ void MODEM_Init(void)
 }
 
 
-void ADC0_IRQHandler(void)
-{
-
-
-	static MODEM_DemState demodulationState;
-	static uint8_t demodulationSampleCount, demodulationTxBitNum;
-	static uint16_t demodulationTxByte;
-//	static uint8_t outs[];
-
-
-	static float dn;
-
-	// Get value from ADC x(n)
-	PUSH(xBuffer,( (float)ADC_GetConversionResult(ADC_0,ADC_ChannelA)/ADC_RESOLUTION*ADC_VCC-ADC_OFFSET));
-
-	// Push m(n)=x(n)*x(n-delta)
-	PUSH(mBuffer,GET_TAIL(xBuffer)*GET_HEAD(xBuffer));
-
-	// Apply filter
-	dn = 0;
-	for(uint16_t i=0; i < DEMOD_FIR_ORDER; i++)
-		dn += GET(mBuffer,i) * FIR[i];
-
-	uint8_t output;
-	if (dn > DEMOD_COMP_HYSTERERSIS)
-		output = 0;
-	else if (dn < -DEMOD_COMP_HYSTERERSIS)
-		output = 1;
-
-
-//	DAC_WriteValue(DAC_0,(uint16_t)((dn + ADC_OFFSET)*ADC_RESOLUTION/ADC_VCC));
-	// DAC_WriteValue(DAC_0,(uint16_t)(output * ADC_RESOLUTION));
-
-
-	switch(demodulationState)
-	{
-
-		case MODEM_DEM_IDLE:
-			if(output == 0)
-			{
-				demodulationSampleCount ++;
-				if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
-				{
-					demodulationSampleCount = 0;
-					demodulationState = MODEM_DEM_READING;
-				}
-			}else if((output == 1) && (demodulationSampleCount > 0))
-				demodulationSampleCount = 0;
-
-			break;
-
-		case MODEM_DEM_READING:
-
-			ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
-
-			if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
-			{
-				demodulationTxByte |= output << demodulationTxBitNum;
-				demodulationTxBitNum ++;
-				demodulationSampleCount ++;
-
-			}
-			else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
-			{
-				if(demodulationTxBitNum == DEMOD_DATA_BITS_PER_FRAME + 1)
-				{
-					uint8_t c = (uint8_t)demodulationTxByte;
-					push(&transmitBuffer , &demodulationTxByte);
-					demodulationTxBitNum = 0;
-					demodulationTxByte = 0;
-					demodulationState = MODEM_DEM_ENDED_FRAME;
-				}
-				demodulationSampleCount = 0;
-			}else
-				demodulationSampleCount ++;
-
-			break;
-
-		case MODEM_DEM_ENDED_FRAME:
-			ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
-
-			if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
-			{
-//				ASSERT(output);
-				demodulationSampleCount ++;
-
-			}
-			else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
-			{
-				demodulationSampleCount = 0;
-				demodulationState = MODEM_DEM_IDLE;
-			}else
-				demodulationSampleCount ++;
-
-			break;
-		default:
-			ASSERT(0);
-			break;
-
-	}
-//		demodulationSampleCount = 0;
-//	}
-
-
-
-
-
-
-}
-
 
 void MODEM_SendByte(uint8_t data)
 {
@@ -427,6 +317,99 @@ bool MODEM_ReceiveByte(uint8_t * byte)
 
 void MODEM_Demodulate()
 {
+	static MODEM_DemState demodulationState;
+	static uint8_t demodulationSampleCount, demodulationTxBitNum;
+	static uint16_t demodulationTxByte;
+
+	static float xn, dn;
+
+	CircularBuffer * ADC_samples = ADC_getConversionSamples(ADC_0,ADC_ChannelA);
+	while(!isEmpty(ADC_samples))
+	{
+		pop(ADC_samples, &xn);
+		// Get value from ADC x(n)
+		PUSH(xBuffer,xn);
+
+		// Push m(n)=x(n)*x(n-delta)
+		PUSH(mBuffer,GET_TAIL(xBuffer)*GET_HEAD(xBuffer));
+
+		// Apply filter
+		dn = 0;
+		for(uint16_t i=0; i < DEMOD_FIR_ORDER; i++)
+			dn += GET(mBuffer,i) * FIR[i];
+
+		uint8_t output;
+		if (dn > DEMOD_COMP_HYSTERERSIS)
+			output = 0;
+		else if (dn < -DEMOD_COMP_HYSTERERSIS)
+			output = 1;
+
+
+		switch(demodulationState)
+		{
+
+			case MODEM_DEM_IDLE:
+				if(output == 0)
+				{
+					demodulationSampleCount ++;
+					if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+					{
+						demodulationSampleCount = 0;
+						demodulationState = MODEM_DEM_READING;
+					}
+				}else if((output == 1) && (demodulationSampleCount > 0))
+					demodulationSampleCount = 0;
+
+				break;
+
+			case MODEM_DEM_READING:
+
+				ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
+
+				if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
+				{
+					demodulationTxByte |= output << demodulationTxBitNum;
+					demodulationTxBitNum ++;
+					demodulationSampleCount ++;
+
+				}
+				else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+				{
+					if(demodulationTxBitNum == DEMOD_DATA_BITS_PER_FRAME + 1){
+						push(&transmitBuffer , &demodulationTxByte);
+						demodulationTxBitNum = 0;
+						demodulationTxByte = 0;
+						demodulationState = MODEM_DEM_ENDED_FRAME;
+					}
+					demodulationSampleCount = 0;
+				}else
+					demodulationSampleCount ++;
+
+				break;
+
+			case MODEM_DEM_ENDED_FRAME:
+				ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
+
+				if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
+				{
+	//				ASSERT(output);
+					demodulationSampleCount ++;
+
+				}
+				else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+				{
+					demodulationSampleCount = 0;
+					demodulationState = MODEM_DEM_IDLE;
+				}else
+					demodulationSampleCount ++;
+
+				break;
+			default:
+				ASSERT(0);
+				break;
+
+		}
+	}
 
 }
 #endif // MODEM_VERSION==1

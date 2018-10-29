@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MODEM_VERSION 2
+#define MODEM_VERSION 1
 
 #ifndef MODEM_VERSION
 #error "Modem version undefined!"
@@ -36,6 +36,7 @@ void MODEM_Init();
  * @param data byte to be sent
  */
 void MODEM_SendByte(uint8_t data);
+
 
 /**
  * @brief Modem  function to receive a byte
