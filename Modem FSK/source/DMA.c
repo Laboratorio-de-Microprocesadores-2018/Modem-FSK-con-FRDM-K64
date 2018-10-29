@@ -182,12 +182,12 @@ void DMA0_IRQHandler(void)
 
 void DMA1_IRQHandler(void)
 {
-	SET_TEST_PIN;
+//	SET_TEST_PIN;
 
 	DMA0->INT |= (1 << 1);
 	DMAcallbacks[1]();
 
-	CLEAR_TEST_PIN;
+	//CLEAR_TEST_PIN;
 }
 void DMA2_IRQHandler(void)
 {

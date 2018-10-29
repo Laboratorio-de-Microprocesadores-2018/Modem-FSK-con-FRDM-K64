@@ -35,13 +35,13 @@
 /** Number of samples of the output sine */
 #define N_SAMPLE (256)
 /** Bus clock of the cpu */
-#define BUS_CLOCK 50000000.0
+#define SYSTEM_CLOCK_FREC 50000000.0
 /** Mark and space frequency */
 #define FREQ_MARK (1200)
 #define FREQ_SPACE (2200)
 /** Period in Bus Clock between samples */
-#define	MARK BUS_CLOCK/(N_SAMPLE*FREQ_MARK)
-#define SPACE BUS_CLOCK/(N_SAMPLE*FREQ_SPACE)
+#define	MARK SYSTEM_CLOCK_FREC/(N_SAMPLE*FREQ_MARK)
+#define SPACE SYSTEM_CLOCK_FREC/(N_SAMPLE*FREQ_SPACE)
 /** Idle state definition*/
 #define IDLE_STATE MARK
 /** Helper macro to map a bit to its respective PIT period*/
@@ -52,9 +52,10 @@
 #define P6(n) P4(n), P4(n ^ 1), P4(n ^ 1), P4(n)
 #define LOOK_UP P6(0), P6(1), P6(1), P6(0)
 
-#define bufferSizeDataBytes (30)
-#define frameSizeBits (11)
-#define bufferSize (bufferSizeDataBytes*frameSizeBits)
+/** Capacity of bitstream buffer */
+#define FRAMES_BITSTREAM_BUFFER (30)
+#define BITS_PER_FRAME (11)
+#define BITSTREAM_BUFFER_SIZE (FRAMES_BITSTREAM_BUFFER*BITS_PER_FRAME)
 #define bufferEmpty (head==tail)
 #define bufferFull	(tail+1==head)
 
@@ -90,7 +91,7 @@ static unsigned int parityTable[256] = { LOOK_UP };
 // DAC output samples
 static uint16_t signal[N_SAMPLE];
 
-static uint32_t outcomingBits[bufferSize];
+static uint32_t outcomingBits[BITSTREAM_BUFFER_SIZE];
 static uint32_t head,tail;
 
 // Buffer to store delayed samples: x(n) to x(n-delta)
@@ -128,7 +129,7 @@ static void MODEM_modulate(void * data)
 	else
 	{
 		PIT_SetTimerPeriod (DAC_TIMER, outcomingBits[tail]);
-		tail = (tail + 1)%bufferSize;
+		tail = (tail + 1)%BITSTREAM_BUFFER_SIZE;
 	}
 
 	CLEAR_TEST_PIN;
@@ -173,7 +174,7 @@ void MODEM_Init(void)
 	 * */
 	PDB_Config PDBconfig;
 	PDB_GetDefaultConfig(&PDBconfig);
-	PDBconfig.MODValue = ((BUS_CLOCK/DEMOD_SAMPLE_FREQ)+0.5); // PDB running at sample rate
+	PDBconfig.MODValue = ((SYSTEM_CLOCK_FREC/DEMOD_SAMPLE_FREQ)+0.5); // PDB running at sample rate
 	PDB_Init(&PDBconfig);
 
 	//----------------------------- PIT -------------------------------//
@@ -382,22 +383,22 @@ void MODEM_SendByte(uint8_t data)
 
 	// Start bit
 	outcomingBits[head]=BIT2PERIOD(0);
-	head = (head + 1)%bufferSize;
+	head = (head + 1)%BITSTREAM_BUFFER_SIZE;
 
 	// Data bits
 	for(int i=0; i<8; i++)
 	{
 		outcomingBits[head]=BIT2PERIOD( (data>>i)&(1) );
-		head = (head + 1)%bufferSize;
+		head = (head + 1)%BITSTREAM_BUFFER_SIZE;
 	}
 
 	// Parity bit
 	outcomingBits[head]=BIT2PERIOD(parityTable[data]);
-	head = (head + 1)%bufferSize;
+	head = (head + 1)%BITSTREAM_BUFFER_SIZE;
 
 	// Stop bit
 	outcomingBits[head]=BIT2PERIOD(1);
-	head = (head + 1)%bufferSize;
+	head = (head + 1)%BITSTREAM_BUFFER_SIZE;
 
 	// Enable interrupts
 	PIT_TimerIntrruptEnable(MODULATION_TIMER, true);
