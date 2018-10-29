@@ -51,7 +51,6 @@
 /** Helper macro to map a bit to its respective samples table*/
 #define BIT2FTABLE(x) (x)==0 ? (uint32_t)CnVTableH : (uint32_t)CnVTableL
 
-/** Choose either edge aligned or center aligned PWM */
 //#define CPWM
 #ifdef CPWM
 #define MOD4PWM  (SYSTEM_CLOCK_FREC / (2*PWM_FREC*(1<<PS_USED)) )
@@ -61,7 +60,6 @@
 #endif
 
 #define EPWM
-
 #ifdef EPWM
 #define MOD4PWM ((SYSTEM_CLOCK_FREC/(PWM_FREC*(1<<PS_USED)))-1)
 #define TABLE_SIZE (PWM_FREC/BIT_FREC)
@@ -114,8 +112,10 @@ static void DecInit(void);
  */
 void MODEM_Init(void)
 {
+
 	GenInit();
-	//DecInit();
+	DecInit();
+
 }
 
 /**
