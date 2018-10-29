@@ -32,9 +32,7 @@
 #define EPWM 0
 #define CPWM 1
 
-#define PWM_MODE EPWM
-
-
+#define PWM_MODE EPWM //Define to choose which PWM mode of the FTM the modem will use (EPWM or CPWM)
 
 /*-------------------------------DEC--------------------------------------*/
 
@@ -47,11 +45,12 @@
 #endif
 
 #define MAX_MOD ((1<<16)-1)
-#define MOD_IC_USED MAX_MOD
+#define MOD_IC_USED MAX_MOD //MOD value for the IC FTM instance used
 #define SYSTEM_CLOCK_FREC 50000000
-#define CNV_VAL0 SYSTEM_CLOCK_FREC/BIT_0FREC
-#define CNV_VAL1 SYSTEM_CLOCK_FREC/BIT_1FREC
+#define CNV_VAL0 SYSTEM_CLOCK_FREC/BIT_0FREC 	//
+#define CNV_VAL1 SYSTEM_CLOCK_FREC/BIT_1FREC	//
 #define PS_USED FTM_PRESCALE_1
+#define IC_BUFFER_SIZE 10 //size of the buffer used to store CnV values captured
 
 /*-------------------------------------GEN-------------------------------*/
 #define BIT_FREC (1200)
@@ -105,7 +104,7 @@ static unsigned int parityTable[256] = { LOOK_UP };
 NEW_CIRCULAR_BUFFER(receivedBytes,10,sizeof(uint16_t));
 
 /** Buffer with input captured values.*/
-NEW_CIRCULAR_BUFFER(inputCaptureBuffer,10,sizeof(uint16_t));
+NEW_CIRCULAR_BUFFER(inputCaptureBuffer, IC_BUFFER_SIZE ,sizeof(uint16_t));
 
 /** Buffer with bitstream (stores pointers to CnV tables).*/
 NEW_CIRCULAR_BUFFER(outputBitstream,BITSTREAM_BUFFER_SIZE,sizeof(uint32_t));
@@ -290,7 +289,7 @@ void MODEM_Demodulate()
 //                   Local function definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 /**
- * @brief Modem version 2 initialization decodification part
+ * @brief Modem version 2 initialization of the decodification part
  */
 static void DecInit(void)
 {
@@ -341,7 +340,7 @@ static void DecInit(void)
 }
 
 /**
- * @brief Modem version 2 initialization PWM generation part
+ * @brief Modem version 2 initialization of the PWM generation part
  */
 static void GenInit(void)
 {
@@ -408,8 +407,10 @@ static void GenInit(void)
 
 /**
  * This function creates a table of Cnv values to be used in the generation of a sine wave
- * according to PWM_FREC and BIT_FREC
+ * according to PWM_FREC and BIT_FREC.
  * arr1 has BIT_FREC and arr2 BIT_FREC*2
+ * Note:
+ * 		Its definition changes according to the PWM mode selected to create the correct table for each case
  */
 static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
 {
@@ -450,7 +451,7 @@ static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
 }
 
 /*
- * Callback for Input Capture, recieves the captured value and pushes it to the buffer
+ * Callback for Input Capture, receives the captured value and pushes it to the buffer
  * */
 static void MODEM_StoreCaptureTime(uint16_t captureValue)
 {
@@ -462,10 +463,9 @@ static void MODEM_StoreCaptureTime(uint16_t captureValue)
 
 
 /**
- * major loop callback for DMA, according to the data received selects one sine table
+ * Major loop callback for DMA, according to the data received selects one sine table
  * or the other (high or low frequency to represent 0 or 1)
  */
-
 static void MODEM_Modulate(void)
 {
 

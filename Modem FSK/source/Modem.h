@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MODEM_VERSION 1
+#define MODEM_VERSION 2
 
 #ifndef MODEM_VERSION
 #error "Modem version undefined!"

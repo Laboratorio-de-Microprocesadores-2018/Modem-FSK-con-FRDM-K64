@@ -210,7 +210,7 @@ uint16_t FTM_GetModValue(FTM_Instance instance)
  *  */
 void FTM_ClearCount(FTM_Instance instance)
 {
-	FTMs[instance]->CNT=0;
+	FTMs[instance]->CNT=0;//writing anything to this register clears it
 }
 
 
