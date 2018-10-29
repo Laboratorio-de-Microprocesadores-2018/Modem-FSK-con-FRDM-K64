@@ -53,7 +53,7 @@ static unsigned int parityTable[256] = { LOOK_UP };
 #define PWM_FTM_INSTANCE FTM_0
 
 
-#define CPWM
+//#define CPWM
 #ifdef CPWM
 #define MOD4PWM  (SYSTEM_CLOCK_FREC / (2*PWM_FREC*(1<<PS_USED)) )
 #define TABLE_SIZE (2*PWM_FREC/BIT_FREC)
@@ -61,7 +61,7 @@ static unsigned int parityTable[256] = { LOOK_UP };
 #define PWM_MODE_USED FTM_PWM_CENTER_ALIGNED
 #endif
 
-//#define EPWM
+#define EPWM
 #ifdef EPWM
 #define MOD4PWM ((SYSTEM_CLOCK_FREC/(PWM_FREC*(1<<PS_USED)))-1)
 #define TABLE_SIZE (PWM_FREC/BIT_FREC)
@@ -103,7 +103,7 @@ static void DecInit(void);
 void MODEM2_Init(void)
 {
 	GenInit();
-	DecInit();
+	//DecInit();
 }
 
 /**
@@ -331,9 +331,9 @@ static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
 		//CnV VALUES
 		arr1[i]=(uint16_t)((a*(MOD4PWM-2))+1+0.5);
 	}
-	for(uint16_t i=0; i<HALF_TABLE_SIZE; i++)
+	for(uint16_t i=0; i<TABLE_SIZE; i++)
 	{
-		a=(1.0+sin(2*PI*(double)i*2/(double)HALF_TABLE_SIZE))/2.0;
+		a=(1.0+sin(2*PI*(double)i*2/(double)TABLE_SIZE))/2.0;
 		arr2[i]=(uint16_t) (a*(MOD4PWM-2)+1+0.5);
 	}
 
