@@ -6,7 +6,7 @@
 #if MODEM_VERSION == 2
 
 #pragma message ("Using version 2 of the modem")
-#include "hardware.h" // SACARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+
 #include "DMA.h"
 #include "DMAMUX.h"
 #include "FTM.h"
@@ -17,22 +17,37 @@
 #include "CircularBuffer.h"
 #include "CPUTimeMeasurement.h"
 
+
+
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
 #define PI 3.1415926
 
-// Look up table for parity
+// Look up table for parity (https://www.geeksforgeeks.org/compute-parity-number-using-xor-table-look/)
 #define P2(n) n, n ^ 1, n ^ 1, n
 #define P4(n) P2(n), P2(n ^ 1), P2(n ^ 1), P2(n)
 #define P6(n) P4(n), P4(n ^ 1), P4(n ^ 1), P4(n)
 #define LOOK_UP P6(0), P6(1), P6(1), P6(0)
 
+
+#define EPWM 0
+#define CPWM 1
+
+#define PWM_MODE EPWM
+
+
+
 /*-------------------------------DEC--------------------------------------*/
 
+#if PWM_MODE == EPWM
+	#define BIT_1FREC (1200)
+	#define BIT_0FREC (2400)
+#elif PWM_MODE == CPWM
+	#define BIT_1FREC (1070)
+	#define BIT_0FREC (2090)
+#endif
 
-#define BIT_1FREC (1200)
-#define BIT_0FREC (2400)
 #define MAX_MOD ((1<<16)-1)
 #define MOD_IC_USED MAX_MOD
 #define SYSTEM_CLOCK_FREC 50000000
@@ -50,21 +65,18 @@
 #define BITSTREAM_BUFFER_SIZE (FRAMES_BITSTREAM_BUFFER*BITS_PER_FRAME)
 /** Helper macro to map a bit to its respective samples table*/
 #define BIT2FTABLE(x) (x)==0 ? (uint32_t)CnVTableH : (uint32_t)CnVTableL
-
-//#define CPWM
-#ifdef CPWM
-#define MOD4PWM  (SYSTEM_CLOCK_FREC / (2*PWM_FREC*(1<<PS_USED)) )
-#define TABLE_SIZE (2*PWM_FREC/BIT_FREC)
-#define HALF_TABLE_SIZE (PWM_FREC/BIT_FREC)
-#define PWM_MODE_USED FTM_PWM_CENTER_ALIGNED
+/** FTM constants to configure PWM*/
+#if PWM_MODE == EPWM
+	#define MOD4PWM ((SYSTEM_CLOCK_FREC/(PWM_FREC*(1<<PS_USED)))-1)
+	#define TABLE_SIZE (PWM_FREC/BIT_FREC)
+	#define PWM_MODE_USED FTM_PWM_EDGE_ALIGNED
+#elif PWM_MODE == CPWM
+	#define MOD4PWM  (SYSTEM_CLOCK_FREC / (2*PWM_FREC*(1<<PS_USED)) )
+	#define TABLE_SIZE (2*PWM_FREC/BIT_FREC)
+	#define HALF_TABLE_SIZE (PWM_FREC/BIT_FREC)
+	#define PWM_MODE_USED FTM_PWM_CENTER_ALIGNED
 #endif
 
-#define EPWM
-#ifdef EPWM
-#define MOD4PWM ((SYSTEM_CLOCK_FREC/(PWM_FREC*(1<<PS_USED)))-1)
-#define TABLE_SIZE (PWM_FREC/BIT_FREC)
-#define PWM_MODE_USED FTM_PWM_EDGE_ALIGNED
-#endif
 
 
 /** Module usage definitions */
@@ -72,10 +84,20 @@
 #define PWM_FREC 98400
 #define PWM_FTM_INSTANCE FTM_0
 #define IC_FTM_INSTANCE FTM_1
+
+
 typedef struct{
 	uint32_t outcomingBits[BITSTREAM_BUFFER_SIZE];
 	uint32_t head,tail;
 }CircBuff;
+
+/////////////////////////////////////////////////////////////////////////////////
+//                    Enumerations, structures and typedefs                    //
+/////////////////////////////////////////////////////////////////////////////////
+typedef enum{IDLE,START,DATA,STOP}ParsingStatus;
+
+
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local variable definitions ('static')                     //
@@ -83,6 +105,9 @@ typedef struct{
 
 /** Buffer with received data (uint16_t is used because byte is stored with parity bit).*/
 NEW_CIRCULAR_BUFFER(receivedBytes,10,sizeof(uint16_t));
+
+/** Buffer with input captured values.*/
+NEW_CIRCULAR_BUFFER(inputCaptureBuffer,10,sizeof(uint16_t));
 
 /** Tables with CnV for FTM module to generate PWM*/
 static uint16_t CnVTableL[TABLE_SIZE];
@@ -112,10 +137,8 @@ static void DecInit(void);
  */
 void MODEM_Init(void)
 {
-
 	GenInit();
 	DecInit();
-
 }
 
 /**
@@ -243,8 +266,8 @@ void MODEM_SendByte(uint8_t data)
 {
 	SET_TEST_PIN;
 
-	//DMA_DisableInterrupts(1);
-	NVIC_DisableIRQ(DMA1_IRQn);
+	DMA_DisableInterrupts(1);
+
 	//Start bit
 	outputBuffer.outcomingBits[outputBuffer.head]= BIT2FTABLE(0);
 	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
@@ -264,8 +287,8 @@ void MODEM_SendByte(uint8_t data)
 	outputBuffer.outcomingBits[outputBuffer.head]=BIT2FTABLE(1);
 	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
 
-	// Enable interrupts
-	NVIC_EnableIRQ(DMA1_IRQn);
+	// Enable interrupts again
+	DMA_EnableInterrupts(1);
 
 	CLEAR_TEST_PIN;
 }
@@ -308,10 +331,24 @@ bool MODEM_ReceiveByte(uint8_t * byte)
  * according to PWM_FREC and BIT_FREC
  * arr1 has BIT_FREC and arr2 BIT_FREC*2
  */
-#ifdef CPWM
+
 static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
 {
-
+#if PWM_MODE == EPWM
+	double a=0;
+	for(uint16_t i=0; i<TABLE_SIZE; i++)
+	{
+		//DUTY VALUES
+		a=(1.0+sin(2*PI*(double)i/(double)TABLE_SIZE))/2.0;
+		//CnV VALUES
+		arr1[i]=(uint16_t)((a*(MOD4PWM-2))+1+0.5);
+	}
+	for(uint16_t i=0; i<TABLE_SIZE; i++)
+	{
+		a=(1.0+sin(2*PI*(double)i*2/(double)TABLE_SIZE))/2.0;
+		arr2[i]=(uint16_t) (a*(MOD4PWM-2)+1+0.5);
+	}
+#elif PWM_MODE == CPWM
 	double a=0;
 	for(uint16_t i=0; i<HALF_TABLE_SIZE; i++)
 	{
@@ -330,113 +367,93 @@ static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
 		arr2[(2*i)+1]=arr2[2*i];
 
 	}
-
-}
 #endif
-
-#ifdef EPWM
-static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
-{
-
-	double a=0;
-	for(uint16_t i=0; i<TABLE_SIZE; i++)
-	{
-		//DUTY VALUES
-		a=(1.0+sin(2*PI*(double)i/(double)TABLE_SIZE))/2.0;
-		//CnV VALUES
-		arr1[i]=(uint16_t)((a*(MOD4PWM-2))+1+0.5);
-	}
-	for(uint16_t i=0; i<TABLE_SIZE; i++)
-	{
-		a=(1.0+sin(2*PI*(double)i*2/(double)TABLE_SIZE))/2.0;
-		arr2[i]=(uint16_t) (a*(MOD4PWM-2)+1+0.5);
-	}
-
 }
-#endif
 
 void MODEM_Demodulate()
 {
-
-}
-/*
- * Callback for Input Capture, recieves the captured value and pushes bytes to the buffer
- * */
-static void processCaptureTime(uint16_t captureValue)
-{
-	typedef enum{IDLE,START,DATA,STOP}ParsingStatus;
-
-	FTM_ClearCount(FTM_1);
-
 	static ParsingStatus status = IDLE;
 	static uint8_t bit0count = 0;
 	static uint16_t byteWithParity = 0;
 	static uint8_t byteIndex = 0;
 	static bool firstCall;
 
-	if(firstCall==false)
-	{
-		firstCall=true;
-		return;
-	}
 	uint8_t bitRecived;
+	uint16_t captureValue;
 
-
-	if( fabs(captureValue-CNV_VAL1)<(CNV_VAL1*0.35))//  || (captureValue-CNV_VAL1)> (-CNV_VAL1*30.0/100.0)   )
-		bitRecived=1;
-	else if( fabs(captureValue-CNV_VAL0)<CNV_VAL0*0.35  )//|| captureValue-CNV_VAL0> (-CNV_VAL0*30.0/100.0)   )
-		bitRecived=0;
-	else
-		ASSERT(0);//cambiar
-
-	switch (status)
+	if(pop(&inputCaptureBuffer,&captureValue))
 	{
-		case IDLE:
-			if(bitRecived==0)
-				status=START;
-			break;
-		case START:
-			if(bitRecived==0)
-				status=DATA;
-			else if(bitRecived==1)
-			{	ASSERT(0);}//cambiar
-			break;
-		case DATA:
-			if(bitRecived==1)
-			{
-				if(bit0count==0)
-				{
-					byteWithParity|=bitRecived<<byteIndex;
-					byteIndex++;
-				}
-				else
-					ASSERT(0);
-			}
-			else if(bitRecived==0)
-			{
-				bit0count++;
-				if(bit0count==2)
-				{
-					bit0count=0;
-					byteIndex++;
-				}
-			}
-			if(byteIndex==9)
-			{
-				byteIndex=0;
-				push(&receivedBytes,&byteWithParity);
-				byteWithParity=0;
-				status=STOP;
-			}
-			break;
-		case STOP:
-			if(bitRecived==1)
-				status=IDLE;
-			else if(bitRecived==0)
-				status=START;
-			break;
-	}
+		if(firstCall==false)
+		{
+			firstCall=true;
+			return;
+		}
 
+
+
+		if( fabs(captureValue-CNV_VAL1)<(CNV_VAL1*0.35))//  || (captureValue-CNV_VAL1)> (-CNV_VAL1*30.0/100.0)   )
+			bitRecived=1;
+		else if( fabs(captureValue-CNV_VAL0)<CNV_VAL0*0.35  )//|| captureValue-CNV_VAL0> (-CNV_VAL0*30.0/100.0)   )
+			bitRecived=0;
+		else
+			ASSERT(0);//cambiar
+
+		switch (status)
+		{
+			case IDLE:
+				if(bitRecived==0)
+					status=START;
+				break;
+			case START:
+				if(bitRecived==0)
+					status=DATA;
+				else if(bitRecived==1)
+				{	ASSERT(0);}//cambiar
+				break;
+			case DATA:
+				if(bitRecived==1)
+				{
+					if(bit0count==0)
+					{
+						byteWithParity|=bitRecived<<byteIndex;
+						byteIndex++;
+					}
+					else
+						ASSERT(0);
+				}
+				else if(bitRecived==0)
+				{
+					bit0count++;
+					if(bit0count==2)
+					{
+						bit0count=0;
+						byteIndex++;
+					}
+				}
+				if(byteIndex==9)
+				{
+					byteIndex=0;
+					push(&receivedBytes,&byteWithParity);
+					byteWithParity=0;
+					status=STOP;
+				}
+				break;
+			case STOP:
+				if(bitRecived==1)
+					status=IDLE;
+				else if(bitRecived==0)
+					status=START;
+				break;
+		}
+	}
+}
+/*
+ * Callback for Input Capture, recieves the captured value and pushes bytes to the buffer
+ * */
+static void processCaptureTime(uint16_t captureValue)
+{
+	push(&inputCaptureBuffer,&captureValue);
+	FTM_ClearCount(FTM_1);
 }
 
 
