@@ -7,37 +7,32 @@
 
 #pragma message ("Using version 2 of the modem")
 
-
+#include "DMA.h"
+#include "DMAMUX.h"
+#include "FTM.h"
+#include "CMP.h"
+#include "PORT.h"
 #include "Assert.h"
 #include "math.h"
-#include "DMAMUX.h"
-#include "PORT.h"
-#include "DMA.h"
-#include "CMP.h"
-#include "FTM.h"
 #include "CircularBuffer.h"
+#include "CPUTimeMeasurement.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
+#define PI 3.1415926
 
-
-
-// Generating the look-up table while pre-processing
+// Look up table for parity
 #define P2(n) n, n ^ 1, n ^ 1, n
 #define P4(n) P2(n), P2(n ^ 1), P2(n ^ 1), P2(n)
 #define P6(n) P4(n), P4(n ^ 1), P4(n ^ 1), P4(n)
 #define LOOK_UP P6(0), P6(1), P6(1), P6(0)
-// LOOK_UP is the macro expansion to generate the table
-static unsigned int parityTable[256] = { LOOK_UP };
-
-
 
 /*-------------------------------DEC--------------------------------------*/
 
-#define BIT_FREC 1200
-#define BIT_1FREC 1070
-#define BIT_0FREC 2140
+
+#define BIT_1FREC (1200)
+#define BIT_0FREC (2400)
 #define MAX_MOD ((1<<16)-1)
 #define MOD_IC_USED MAX_MOD
 #define SYSTEM_CLOCK_FREC 50000000
@@ -45,21 +40,26 @@ static unsigned int parityTable[256] = { LOOK_UP };
 #define CNV_VAL1 SYSTEM_CLOCK_FREC/BIT_1FREC
 #define PS_USED FTM_PRESCALE_1
 
-
-
 /*-------------------------------------GEN-------------------------------*/
-#define OUTCOMING_BUFF_BYTES (32)
-#define	BITS_PER_BYTE (11)
-#define OUTCOMING_BUFF_SIZE (OUTCOMING_BUFF_BYTES*BITS_PER_BYTE)
-#define PI 3.1415926
-
+#define BIT_FREC (1200)
+/** Capacity of bitstream buffer */
+#define FRAMES_BITSTREAM_BUFFER (32)
+/** Bits per frame: start + 8 data bits + parity + stop */
+#define	BITS_PER_FRAME (11)
+/** Size of bitstream buffer */
+#define BITSTREAM_BUFFER_SIZE (FRAMES_BITSTREAM_BUFFER*BITS_PER_FRAME)
+/** Helper macro to map a bit to its respective samples table*/
 #define BIT2FTABLE(x) (x)==0 ? (uint32_t)CnVTableH : (uint32_t)CnVTableL
 
+<<<<<<< HEAD
 #define DMA_CHANNEL_USED 1
 #define PWM_FREC 98400
 #define PWM_FTM_INSTANCE FTM_0
 
 
+=======
+/** Choose either edge aligned or center aligned PWM */
+>>>>>>> branch 'master' of https://github.com/tlifschitz/Modem-FSK-con-FRDM-K64.git
 //#define CPWM
 #ifdef CPWM
 #define MOD4PWM  (SYSTEM_CLOCK_FREC / (2*PWM_FREC*(1<<PS_USED)) )
@@ -75,18 +75,31 @@ static unsigned int parityTable[256] = { LOOK_UP };
 #define PWM_MODE_USED FTM_PWM_EDGE_ALIGNED
 #endif
 
+
+/** Module usage definitions */
+#define DMA_CHANNEL_USED 1
+#define PWM_FREC 98400
+#define PWM_FTM_INSTANCE FTM_0
+
+typedef struct{
+	uint32_t outcomingBits[BITSTREAM_BUFFER_SIZE];
+	uint32_t head,tail;
+}CircBuff;
+
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 
+/** Buffer with received data (uint16_t is used because byte is stored with parity bit).*/
 NEW_CIRCULAR_BUFFER(receivedBytes,10,sizeof(uint16_t));
+
+/** Tables with CnV for FTM module to generate PWM*/
 static uint16_t CnVTableL[TABLE_SIZE];
 static uint16_t CnVTableH[TABLE_SIZE];
 
-typedef struct{
-	uint8_t outcomingBits[OUTCOMING_BUFF_SIZE];
-	uint32_t head,tail;
-}CircBuff;
+// Look up table with parity
+static unsigned int parityTable[256] = { LOOK_UP };
+
 static CircBuff outputBuffer;
 
 
@@ -102,7 +115,6 @@ static void DecInit(void);
 /////////////////////////////////////////////////////////////////////////////////
 //                   	Local functions and global Services  			       //
 /////////////////////////////////////////////////////////////////////////////////
-
 
 /**
  * @brief Modem version 2 initialization
@@ -236,32 +248,33 @@ static void GenInit(void)
  */
 void MODEM_SendByte(uint8_t data)
 {
+	SET_TEST_PIN;
 
 	DMA_DisableInterrupts(1);
 
 	//Start bit
 	outputBuffer.outcomingBits[outputBuffer.head]= BIT2FTABLE(0);
-	outputBuffer.head = (outputBuffer.head + 1)%OUTCOMING_BUFF_SIZE;
+	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
 
 	//DATA
 	for(int i=0; i<8; i++)
 	{
 		outputBuffer.outcomingBits[outputBuffer.head]=BIT2FTABLE((data>>i)&(1) );
-		outputBuffer.head = (outputBuffer.head + 1)%OUTCOMING_BUFF_SIZE;
+		outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
 	}
 
 	// Parity bit
 	outputBuffer.outcomingBits[outputBuffer.head]=BIT2FTABLE(parityTable[data]);
-	outputBuffer.head = (outputBuffer.head + 1)%OUTCOMING_BUFF_SIZE;
+	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
 
 	// Stop bit
 	outputBuffer.outcomingBits[outputBuffer.head]=BIT2FTABLE(1);
-	outputBuffer.head = (outputBuffer.head + 1)%OUTCOMING_BUFF_SIZE;
+	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
 
 	// Enable interrupts
 	DMA_EnableInterrupts(1);
 
-
+	CLEAR_TEST_PIN;
 }
 
 /**
@@ -441,7 +454,7 @@ static void callback4DMA(void)
 	else
 	{
 		DMA_ModifySourceAddress(1,outputBuffer.outcomingBits[outputBuffer.tail]);
-		outputBuffer.tail = (outputBuffer.tail + 1)%OUTCOMING_BUFF_SIZE;
+		outputBuffer.tail = (outputBuffer.tail + 1)%BITSTREAM_BUFFER_SIZE;
 	}
 
 }

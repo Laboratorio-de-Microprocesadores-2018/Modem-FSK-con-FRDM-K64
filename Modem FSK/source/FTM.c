@@ -219,10 +219,10 @@ void FTM_ClearCount(FTM_Instance instance)
 
 void FTM1_IRQHandler(void)
 {
-	SET_TEST_PIN;
+	//SET_TEST_PIN;
 
 	FTMs[FTM_1]->CONTROLS[0].CnSC &=  ~FTM_CnSC_CHF_MASK;
 	FTM_ICCallback[0](FTMs[FTM_1]->CONTROLS[0].CnV);
 
-	CLEAR_TEST_PIN;
+	//CLEAR_TEST_PIN;
 }
