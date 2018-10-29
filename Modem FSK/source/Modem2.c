@@ -84,8 +84,8 @@ static uint16_t CnVTableL[TABLE_SIZE];
 static uint16_t CnVTableH[TABLE_SIZE];
 
 typedef struct{
-	uint32_t outcomingBits[OUTCOMING_BUFF_SIZE];
-	uint8_t head,tail;
+	uint8_t outcomingBits[OUTCOMING_BUFF_SIZE];
+	uint32_t head,tail;
 }CircBuff;
 static CircBuff outputBuffer;
 
