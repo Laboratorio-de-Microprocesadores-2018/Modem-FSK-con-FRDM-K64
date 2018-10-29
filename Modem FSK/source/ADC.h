@@ -119,6 +119,7 @@ uint32_t ADC_GetDataResultAddress(ADC_Instance n,ADC_Channel m);
 
 void ADC_EnableContinuousConv(ADC_Instance n);
 void ADC_EnableInterrupts(ADC_Instance n,ADC_Channel m);
+void ADC_DisableInterrupts(ADC_Instance n,ADC_Channel m);
 void ADC_SetHardwareTrigger(ADC_Instance n);
 
 

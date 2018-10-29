@@ -104,6 +104,11 @@ void ADC_EnableInterrupts(ADC_Instance n,ADC_Channel m)
 	// Enable ADC Interrupts
 	ADCs[n]->SC1[m] |= ADC_SC1_AIEN(1);
 }
+void ADC_DisableInterrupts(ADC_Instance n,ADC_Channel m)
+{
+	// Enable ADC Interrupts
+	ADCs[n]->SC1[m] &= ~ADC_SC1_AIEN(1);
+}
 void ADC_SetHardwareTrigger(ADC_Instance n){
 	ADCs[n]->SC2 |=  ADC_SC2_ADTRG(ADC_HARDWARE_TRIGGER);
 }
@@ -190,7 +195,8 @@ CircularBuffer * ADC_getConversionSamples(ADC_Instance n, ADC_Channel m){
 	return conversionBuffers[n][m];
 }
 
-void ADC0_IRQHandler(void){
+void ADC0_IRQHandler(void)
+{
 
 	digitalToggle(PORTNUM2PIN(PC,5));
 
@@ -207,7 +213,6 @@ void ADC0_IRQHandler(void){
 			}
 		}
 	}
-
 
 	digitalToggle(PORTNUM2PIN(PC,5));
 
