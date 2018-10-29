@@ -2,10 +2,25 @@
 #include "Assert.h"
 #include "hardware.h"
 #include "GPIO.h"
-#include "DAC.h"
+//#include "DAC.h"
 
+#define ADC_CONVERSION_BUFFER_SIZE	(100)
 
 static ADC_Type * ADCs[] = ADC_BASE_PTRS;
+
+
+
+NEW_CIRCULAR_BUFFER(conversionBuffer00, ADC_CONVERSION_BUFFER_SIZE, sizeof(float));
+NEW_CIRCULAR_BUFFER(conversionBuffer01, ADC_CONVERSION_BUFFER_SIZE, sizeof(float));
+NEW_CIRCULAR_BUFFER(conversionBuffer10, ADC_CONVERSION_BUFFER_SIZE, sizeof(float));
+NEW_CIRCULAR_BUFFER(conversionBuffer11, ADC_CONVERSION_BUFFER_SIZE, sizeof(float));
+
+static CircularBuffer * conversionBuffers[FSL_FEATURE_SOC_ADC16_COUNT][FSL_FEATURE_ADC16_CONVERSION_CONTROL_COUNT] = {
+		{&conversionBuffer00, &conversionBuffer01},
+		{&conversionBuffer10, &conversionBuffer11}
+};
+
+
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local function prototypes ('static')                      //
 /////////////////////////////////////////////////////////////////////////////////
@@ -164,4 +179,32 @@ void ADC_SetCallibration(ADC_Instance n){
 
 	ADCs[n]->PG = PGVar;
 	ADCs[n]->MG = MGVar;
+}
+
+CircularBuffer * ADC_getConversionSamples(ADC_Instance n, ADC_Channel m){
+	ASSERT((n < FSL_FEATURE_SOC_ADC16_COUNT) && (m < FSL_FEATURE_ADC16_CONVERSION_CONTROL_COUNT));
+	return conversionBuffers[n][m];
+}
+
+void ADC0_IRQHandler(void){
+
+	digitalToggle(PORTNUM2PIN(PC,5));
+
+
+	for(uint8_t n = 0; n < FSL_FEATURE_SOC_ADC16_COUNT - 1; n++)
+	{
+		for(uint8_t m = 0; m < FSL_FEATURE_ADC16_CONVERSION_CONTROL_COUNT; m++)
+		{
+			if(((ADCs[n]->SC1[m]) & ADC_SC1_AIEN_MASK) == ADC_SC1_AIEN_MASK)
+			{
+				static float conversionSample;
+				conversionSample = (float)(ADCs[n]->R[m])/ADC_RESOLUTION*ADC_VCC-ADC_OFFSET;
+				ASSERT(push(conversionBuffers[n][m], &conversionSample));
+			}
+		}
+	}
+
+
+	digitalToggle(PORTNUM2PIN(PC,5));
+
 }

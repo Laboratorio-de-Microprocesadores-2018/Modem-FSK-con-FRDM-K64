@@ -81,6 +81,9 @@ void App_Run (void)
 {
 
 	static uint8_t rxByte;
+
+	MODEM_demodulate();
+
 	if(UART_ReceiveByte(&rxByte))
 		MODEM_SendByte(rxByte);
 

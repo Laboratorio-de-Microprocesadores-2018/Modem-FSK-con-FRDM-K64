@@ -30,6 +30,7 @@
 #define ADC_DMA_CHANNEL 1
 #define DAC_TIMER PIT_CHNL_0
 #define MODULATION_TIMER PIT_CHNL_1
+#define DEMODULATION_TIMER	PIT_CHNL_2
 
 // DAC output samples
 static uint16_t signal[N_SAMPLE];
@@ -84,6 +85,7 @@ static float FIR[DEMOD_FIR_ORDER] = {0.000184258321387766,	-0.00221281271600225,
 		0.202192975479381,	0.140515735542082,	0.0690100446059607,	0.0140848855293968,	-0.0125404257819552,
 		-0.0157935638369741,	-0.00875721735248610,	-0.00221281271600225,	0.000184258321387766};
 
+
 // Buffer to store delayed samples: x(n) to x(n-delta)
 NEW_FLOAT_BUFFER(xBuffer,DEMOD_DELTA+1);
 
@@ -123,16 +125,113 @@ void modulate(void * data)
 
 	// If no data in buffer, idle state is MARK
 	if(bufferEmpty)
-		PIT_SetTimerPeriod (DAC_TIMER, MARK);
+		PIT_SetTimerPeriod(DAC_TIMER, MARK);
 	else
 	{
-		PIT_SetTimerPeriod (DAC_TIMER, outcomingBits[tail]);
+		PIT_SetTimerPeriod(DAC_TIMER, outcomingBits[tail]);
 		tail = (tail + 1)%bufferSize;
 	}
 
 	CLEAR_TEST_PIN;
 }
 
+void MODEM_demodulate(void){
+
+	static MODEM_DemState demodulationState;
+	static uint8_t demodulationSampleCount, demodulationTxBitNum;
+	static uint16_t demodulationTxByte;
+
+	static float xn, dn;
+
+	CircularBuffer * ADC_samples = ADC_getConversionSamples(ADC_0,ADC_ChannelA);
+	while(!isEmpty(ADC_samples))
+	{
+		pop(ADC_samples, &xn);
+		// Get value from ADC x(n)
+		PUSH(xBuffer,xn);
+
+		// Push m(n)=x(n)*x(n-delta)
+		PUSH(mBuffer,GET_TAIL(xBuffer)*GET_HEAD(xBuffer));
+
+		// Apply filter
+		dn = 0;
+		for(uint16_t i=0; i < DEMOD_FIR_ORDER; i++)
+			dn += GET(mBuffer,i) * FIR[i];
+
+		uint8_t output;
+		if (dn > DEMOD_COMP_HYSTERERSIS)
+			output = 0;
+		else if (dn < -DEMOD_COMP_HYSTERERSIS)
+			output = 1;
+
+
+		switch(demodulationState)
+		{
+
+			case MODEM_DEM_IDLE:
+				if(output == 0)
+				{
+					demodulationSampleCount ++;
+					if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+					{
+						demodulationSampleCount = 0;
+						demodulationState = MODEM_DEM_READING;
+					}
+				}else if((output == 1) && (demodulationSampleCount > 0))
+					demodulationSampleCount = 0;
+
+				break;
+
+			case MODEM_DEM_READING:
+
+				ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
+
+				if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
+				{
+					demodulationTxByte |= output << demodulationTxBitNum;
+					demodulationTxBitNum ++;
+					demodulationSampleCount ++;
+
+				}
+				else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+				{
+					if(demodulationTxBitNum == DEMOD_DATA_BITS_PER_FRAME + 1){
+						push(&transmitBuffer , &demodulationTxByte);
+						demodulationTxBitNum = 0;
+						demodulationTxByte = 0;
+						demodulationState = MODEM_DEM_ENDED_FRAME;
+					}
+					demodulationSampleCount = 0;
+				}else
+					demodulationSampleCount ++;
+
+				break;
+
+			case MODEM_DEM_ENDED_FRAME:
+				ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
+
+				if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
+				{
+	//				ASSERT(output);
+					demodulationSampleCount ++;
+
+				}
+				else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
+				{
+					demodulationSampleCount = 0;
+					demodulationState = MODEM_DEM_IDLE;
+				}else
+					demodulationSampleCount ++;
+
+				break;
+			default:
+				ASSERT(0);
+				break;
+
+		}
+	}
+
+}
 
 void MODEM_Init(MODEM_Config * config)
 {
@@ -218,6 +317,11 @@ void MODEM_Init(MODEM_Config * config)
 	PIT_TimerIntrruptEnable(MODULATION_TIMER, true);
 	PIT_SetTimerIntrruptHandler(MODULATION_TIMER,&modulate, NULL);
 
+//	//	Configure PIT1 timer to interrupt periodically and modulate every bit
+//	PIT_SetTimerPeriod (DEMODULATION_TIMER, 41666);
+//	PIT_TimerIntrruptEnable(DEMODULATION_TIMER, true);
+//	PIT_SetTimerIntrruptHandler(DEMODULATION_TIMER,&demodulate, NULL);
+
 	// 								OUTPUT
 
 
@@ -258,122 +362,12 @@ void MODEM_Init(MODEM_Config * config)
 	// Start timers to start output signal and modulation
 	PIT_TimerEnable(DAC_TIMER, true);
 	PIT_TimerEnable(MODULATION_TIMER, true);
+//	PIT_TimerEnable(DEMMODULATION_TIMER, true);
 
 
 	// Trigger PDB to start ADC sampling (and DMA requests)
 	PDB_SoftwareTrigger();
 
-
-}
-
-
-void ADC0_IRQHandler(void){
-
-	digitalToggle(PORTNUM2PIN(PC,5));
-
-	static MODEM_DemState demodulationState;
-	static uint8_t demodulationSampleCount, demodulationTxBitNum;
-	static uint16_t demodulationTxByte;
-//	static uint8_t outs[];
-
-
-	static float dn;
-
-	// Get value from ADC x(n)
-	PUSH(xBuffer,( (float)ADC_GetConversionResult(ADC_0,ADC_ChannelA)/ADC_RESOLUTION*ADC_VCC-ADC_OFFSET));
-
-	// Push m(n)=x(n)*x(n-delta)
-	PUSH(mBuffer,GET_TAIL(xBuffer)*GET_HEAD(xBuffer));
-
-	// Apply filter
-	dn = 0;
-	for(uint16_t i=0; i < DEMOD_FIR_ORDER; i++)
-		dn += GET(mBuffer,i) * FIR[i];
-
-	uint8_t output;
-	if (dn > DEMOD_COMP_HYSTERERSIS)
-		output = 0;
-	else if (dn < -DEMOD_COMP_HYSTERERSIS)
-		output = 1;
-
-
-//	DAC_WriteValue(DAC_0,(uint16_t)((dn + ADC_OFFSET)*ADC_RESOLUTION/ADC_VCC));
-	// DAC_WriteValue(DAC_0,(uint16_t)(output * ADC_RESOLUTION));
-
-
-	switch(demodulationState)
-	{
-
-		case MODEM_DEM_IDLE:
-			if(output == 0)
-			{
-				demodulationSampleCount ++;
-				if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
-				{
-					demodulationSampleCount = 0;
-					demodulationState = MODEM_DEM_READING;
-				}
-			}else if((output == 1) && (demodulationSampleCount > 0))
-				demodulationSampleCount = 0;
-
-			break;
-
-		case MODEM_DEM_READING:
-
-			ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
-
-			if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
-			{
-				demodulationTxByte |= output << demodulationTxBitNum;
-				demodulationTxBitNum ++;
-				demodulationSampleCount ++;
-
-			}
-			else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
-			{
-				if(demodulationTxBitNum == DEMOD_DATA_BITS_PER_FRAME + 1){
-					uint8_t c = (uint8_t)demodulationTxByte;
-					push(&transmitBuffer , &demodulationTxByte);
-					demodulationTxBitNum = 0;
-					demodulationTxByte = 0;
-					demodulationState = MODEM_DEM_ENDED_FRAME;
-				}
-				demodulationSampleCount = 0;
-			}else
-				demodulationSampleCount ++;
-
-			break;
-
-		case MODEM_DEM_ENDED_FRAME:
-			ASSERT((demodulationSampleCount) <= DEMOD_SAMPLES_PER_BIT);
-
-			if(demodulationSampleCount == DEMOD_SAMPLES_TO_BIT_MIDDLE)
-			{
-//				ASSERT(output);
-				demodulationSampleCount ++;
-
-			}
-			else if(demodulationSampleCount == DEMOD_SAMPLES_PER_BIT - 1)
-			{
-				demodulationSampleCount = 0;
-				demodulationState = MODEM_DEM_IDLE;
-			}else
-				demodulationSampleCount ++;
-
-			break;
-		default:
-			ASSERT(0);
-			break;
-
-	}
-//		demodulationSampleCount = 0;
-//	}
-
-
-
-
-
-	digitalToggle(PORTNUM2PIN(PC,5));
 
 }
 
@@ -424,6 +418,6 @@ bool MODEM_ReceiveByte(uint8_t * byte)
 //		}
 //		else return false;
 	}
-//	else return false;
+	else return false;
 
 }
