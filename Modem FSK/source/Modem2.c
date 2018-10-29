@@ -17,8 +17,6 @@
 #include "CircularBuffer.h"
 #include "CPUTimeMeasurement.h"
 
-
-
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
@@ -86,29 +84,16 @@
 #define IC_FTM_INSTANCE FTM_1
 
 
-typedef struct{
-	uint32_t outcomingBits[BITSTREAM_BUFFER_SIZE];
-	uint32_t head,tail;
-}CircBuff;
-
 /////////////////////////////////////////////////////////////////////////////////
 //                    Enumerations, structures and typedefs                    //
 /////////////////////////////////////////////////////////////////////////////////
+// States of demodulation FSM (see MODEM_Demodulate())
 typedef enum{IDLE,START,DATA,STOP}ParsingStatus;
-
-
 
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
-
-/** Buffer with received data (uint16_t is used because byte is stored with parity bit).*/
-NEW_CIRCULAR_BUFFER(receivedBytes,10,sizeof(uint16_t));
-
-/** Buffer with input captured values.*/
-NEW_CIRCULAR_BUFFER(inputCaptureBuffer,10,sizeof(uint16_t));
-
 /** Tables with CnV for FTM module to generate PWM*/
 static uint16_t CnVTableL[TABLE_SIZE];
 static uint16_t CnVTableH[TABLE_SIZE];
@@ -116,20 +101,27 @@ static uint16_t CnVTableH[TABLE_SIZE];
 // Look up table with parity
 static unsigned int parityTable[256] = { LOOK_UP };
 
-static CircBuff outputBuffer;
+/** Buffer with received data (uint16_t is used because byte is stored with parity bit).*/
+NEW_CIRCULAR_BUFFER(receivedBytes,10,sizeof(uint16_t));
+
+/** Buffer with input captured values.*/
+NEW_CIRCULAR_BUFFER(inputCaptureBuffer,10,sizeof(uint16_t));
+
+/** Buffer with bitstream (stores pointers to CnV tables).*/
+NEW_CIRCULAR_BUFFER(outputBitstream,BITSTREAM_BUFFER_SIZE,sizeof(uint32_t));
 
 
 /////////////////////////////////////////////////////////////////////////////////
-//                   Local function declarations                               //
+//                   Local function prototypes ('static') 					   //
 /////////////////////////////////////////////////////////////////////////////////
 static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2);//size=PWM_FREC/BIT_FREC
-static void processCaptureTime(uint16_t captureValue);
-static void callback4DMA(void);
+static void MODEM_StoreCaptureTime(uint16_t captureValue);
+static void MODEM_Modulate(void);
 static void GenInit(void);
 static void DecInit(void);
 
 /////////////////////////////////////////////////////////////////////////////////
-//                   	Local functions and global Services  			       //
+//                   				Services								   //
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -142,155 +134,39 @@ void MODEM_Init(void)
 }
 
 /**
- * @brief Modem version 2 initialization decodification part
- */
-static void DecInit(void)
-{
-	// PIN configuration for CMP
-	PORT_Config PORTconfig;
-	PORT_GetPinDefaultConfig(&PORTconfig);
-	// PC5 as CMP0_OUT
-	PORTconfig.mux = PORT_MuxAlt6;
-	PORT_PinConfig(PORT_C,5,&PORTconfig);
-	// PC7 as CMP0_IN1
-	PORTconfig.mux = PORT_MuxAlt0;
-	PORT_PinConfig(PORT_C,7,&PORTconfig);
-
-	//			CMP
-	CMP_Config CMPconfig;
-	CMP_GetDefaultConfig(&CMPconfig);
-	CMPconfig.hysteresisMode = CMP_HysteresisLevel3;
-	CMPconfig.enableHighSpeed = false;
-	CMPconfig.enableOutputPin = true;
-	CMP_Init(CMP_0,&CMPconfig);
-	CMP_SetInputChannels(CMP_0,CMP_IN1,CMP_IN7);
-
-	CMP_DACConfig CMP_DACconfig = {.vref = CMP_VrefSourceVin2, .dacValue= 1.65/(3.33/64)-1};
-	CMP_SetDACConfig (CMP_0, &CMP_DACconfig);
-
-	// Configure filter with 5us period, and to filter glitches of less than 5 samples (25us)
-	CMP_FilterConfig CMPFilterConfig = {.filterPeriod = 200, .filterCount = 4};
-	CMP_SetFilterConfig (CMP_0, &CMPFilterConfig);
-
-	//Input capture configuration
-	FTM_Config config4IC;
-	config4IC.clockSource = FTM_SYSTEM_CLOCK;
-	config4IC.prescale = FTM_PRESCALE_1;
-	FTM_Init(IC_FTM_INSTANCE,&config4IC);
-
-	FTM_InputCaptureConfig ICConf;
-	ICConf.channel=0;
-	ICConf.enableDMA=false;
-	ICConf.filterValue=0;
-	ICConf.mod=MOD_IC_USED;
-	ICConf.mode=FTM_RISING_EDGE;
-	ICConf.callback=processCaptureTime;//set callback to process capture
-	FTM_SetupInputCapture(IC_FTM_INSTANCE, &ICConf);
-	FTM_EnableClock(IC_FTM_INSTANCE);
-
-	CMP_SetOutputDestination(CMP_OUT_FTM1_CH0);
-
-}
-
-/**
- * @brief Modem version 2 initialization PWM generation part
- */
-static void GenInit(void)
-{
-	// DMA configuration
-	createCnVSineTables(CnVTableL,CnVTableH);
-	DMA_Config DMAconfig;
-	DMA_GetDefaultConfig(&DMAconfig);
-	DMA_Init(&DMAconfig);
-
-	//DMA Transfer configuration
-	DMA_TransferConfig DMATransfer;
-	DMATransfer.sourceAddress = (uint32_t)CnVTableL;
-	DMATransfer.destinationAddress = FTM_GetCnVAddress(0,0);
-	DMATransfer.destinationOffset = 0;
-	DMATransfer.sourceOffset = 2;
-	DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
-	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
-	DMATransfer.sourceLastAdjust=-sizeof(CnVTableL);
-	DMATransfer.destinationLastAdjust=0;
-	DMATransfer.majorLoopCounts = sizeof(CnVTableL)/sizeof(CnVTableL[0]);
-	DMATransfer.minorLoopBytes = 2;
-
-	DMA_SetTransferConfig(DMA_CHANNEL_USED,&DMATransfer);
-
-	DMA_SetCallback(DMA_CHANNEL_USED,callback4DMA);
-	DMA_EnableInterrupts(DMA_CHANNEL_USED);
-	DMA_EnableChannelRequest (DMA_CHANNEL_USED);
-
-	//DMA MUX
-	DMAMUX_Init ();
-	DMAMUX_SetSource(DMA_CHANNEL_USED,DMAMUX_FTM0_CH0);
-	DMAMUX_EnableChannel(DMA_CHANNEL_USED,false);
-
-
-
-	//FTM configuration for PWM generation and DMA triggering
-
-	//Configure PORT C pin 1 to be the PWM output
-	PORT_Config portConf;
-	PORT_GetPinDefaultConfig(&portConf);
-	portConf.mux = PORT_MuxAlt4;	//Alt4 FTM0 Chnl 0
-	PORT_PinConfig(PORT_C,1,&portConf);
-
-	//Basic FTM configuration
-	FTM_Config config4PWM;
-	config4PWM.clockSource = FTM_SYSTEM_CLOCK;
-	config4PWM.prescale = FTM_PRESCALE_1;
-	FTM_Init(PWM_FTM_INSTANCE,&config4PWM);
-
-	//PWM configuration
-	FTM_PwmConfig PWMConfig;
-	PWMConfig.channel = FTM_CHNL_0;
-	PWMConfig.mode = PWM_MODE_USED;
-	PWMConfig.enableDMA=true;
-	PWMConfig.CnV =(uint16_t)((MOD4PWM)*0.5) ;
-	PWMConfig.mod=MOD4PWM;
-
-	FTM_SetupPwm(PWM_FTM_INSTANCE,&PWMConfig);
-
-
-	FTM_EnableClock(PWM_FTM_INSTANCE);
-}
-
-
-/**
  * @brief Modem version 2  function to send a byte
  * @param data byte to be sent
  */
 void MODEM_SendByte(uint8_t data)
 {
-	SET_TEST_PIN;
+	uint32_t temp;
 
 	DMA_DisableInterrupts(1);
 
 	//Start bit
-	outputBuffer.outcomingBits[outputBuffer.head]= BIT2FTABLE(0);
-	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
+	temp = BIT2FTABLE(0);
+	push(&outputBitstream,&temp);
+
 
 	//DATA
 	for(int i=0; i<8; i++)
 	{
-		outputBuffer.outcomingBits[outputBuffer.head]=BIT2FTABLE((data>>i)&(1) );
-		outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
+		temp = BIT2FTABLE((data>>i)&(1) );
+		push(&outputBitstream,&temp);
 	}
 
 	// Parity bit
-	outputBuffer.outcomingBits[outputBuffer.head]=BIT2FTABLE(parityTable[data]);
-	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
+	temp = BIT2FTABLE(parityTable[data]);
+	push(&outputBitstream,&temp);
+
 
 	// Stop bit
-	outputBuffer.outcomingBits[outputBuffer.head]=BIT2FTABLE(1);
-	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
+	temp = BIT2FTABLE(1);
+	push(&outputBitstream,&temp);
 
 	// Enable interrupts again
 	DMA_EnableInterrupts(1);
 
-	CLEAR_TEST_PIN;
 }
 
 /**
@@ -300,7 +176,7 @@ void MODEM_SendByte(uint8_t data)
  */
 bool MODEM_ReceiveByte(uint8_t * byte)
 {
-	SET_TEST_PIN;
+
 	bool retVal;
 	uint16_t d=0;
 
@@ -320,83 +196,44 @@ bool MODEM_ReceiveByte(uint8_t * byte)
 	else
 		retVal = false;
 
-	CLEAR_TEST_PIN;
-
 	return retVal;
-}
-
-
-/**
- * This function creates a table of Cnv values to be used in the generation of a sine wave
- * according to PWM_FREC and BIT_FREC
- * arr1 has BIT_FREC and arr2 BIT_FREC*2
- */
-
-static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
-{
-#if PWM_MODE == EPWM
-	double a=0;
-	for(uint16_t i=0; i<TABLE_SIZE; i++)
-	{
-		//DUTY VALUES
-		a=(1.0+sin(2*PI*(double)i/(double)TABLE_SIZE))/2.0;
-		//CnV VALUES
-		arr1[i]=(uint16_t)((a*(MOD4PWM-2))+1+0.5);
-	}
-	for(uint16_t i=0; i<TABLE_SIZE; i++)
-	{
-		a=(1.0+sin(2*PI*(double)i*2/(double)TABLE_SIZE))/2.0;
-		arr2[i]=(uint16_t) (a*(MOD4PWM-2)+1+0.5);
-	}
-#elif PWM_MODE == CPWM
-	double a=0;
-	for(uint16_t i=0; i<HALF_TABLE_SIZE; i++)
-	{
-		//DUTY VALUES
-		a=(1.0+sin(2*PI*(double)i/(double)HALF_TABLE_SIZE))/2.0;
-		//CnV VALUES
-		arr1[2*i]=(uint16_t)((a*(MOD4PWM-2))+1+0.5);
-		arr1[(2*i)+1]=arr1[2*i];
-	}
-	for(uint16_t i=0; i<HALF_TABLE_SIZE; i++)
-	{
-		//DUTY VALUES
-		a=(1.0+sin(2*PI*(double)i*2/(double)HALF_TABLE_SIZE))/2.0;
-		//CnV VALUES
-		arr2[2*i]=(uint16_t) (a*(MOD4PWM-2)+1+0.5);
-		arr2[(2*i)+1]=arr2[2*i];
-
-	}
-#endif
 }
 
 void MODEM_Demodulate()
 {
+
+
 	static ParsingStatus status = IDLE;
 	static uint8_t bit0count = 0;
 	static uint16_t byteWithParity = 0;
 	static uint8_t byteIndex = 0;
 	static bool firstCall;
 
+
+
 	uint8_t bitRecived;
 	uint16_t captureValue;
 
-	if(pop(&inputCaptureBuffer,&captureValue))
+	// Get an input capture count
+	FTM_DisableInterrupts(IC_FTM_INSTANCE);
+	bool newInputCaptureAvailable = pop(&inputCaptureBuffer,&captureValue);
+	FTM_EnableInterrupts(IC_FTM_INSTANCE);
+
+	if(newInputCaptureAvailable)
 	{
+		SET_TEST_PIN;
 		if(firstCall==false)
 		{
 			firstCall=true;
 			return;
 		}
 
-
-
-		if( fabs(captureValue-CNV_VAL1)<(CNV_VAL1*0.35))//  || (captureValue-CNV_VAL1)> (-CNV_VAL1*30.0/100.0)   )
+		if( fabs(captureValue-CNV_VAL1)<(CNV_VAL1*0.35))
 			bitRecived=1;
-		else if( fabs(captureValue-CNV_VAL0)<CNV_VAL0*0.35  )//|| captureValue-CNV_VAL0> (-CNV_VAL0*30.0/100.0)   )
+		else if( fabs(captureValue-CNV_VAL0)<CNV_VAL0*0.35)
 			bitRecived=0;
 		else
-			ASSERT(0);//cambiar
+			ASSERT(0);
 
 		switch (status)
 		{
@@ -445,15 +282,182 @@ void MODEM_Demodulate()
 					status=START;
 				break;
 		}
+		CLEAR_TEST_PIN;
 	}
 }
-/*
- * Callback for Input Capture, recieves the captured value and pushes bytes to the buffer
- * */
-static void processCaptureTime(uint16_t captureValue)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                   Local function definitions ('static')                     //
+/////////////////////////////////////////////////////////////////////////////////
+/**
+ * @brief Modem version 2 initialization decodification part
+ */
+static void DecInit(void)
 {
+	// PIN configuration for CMP
+	PORT_Config PORTconfig;
+	PORT_GetPinDefaultConfig(&PORTconfig);
+	// PC5 as CMP0_OUT
+	PORTconfig.mux = PORT_MuxAlt6;
+	PORT_PinConfig(PORT_C,5,&PORTconfig);
+	// PC7 as CMP0_IN1
+	PORTconfig.mux = PORT_MuxAlt0;
+	PORT_PinConfig(PORT_C,7,&PORTconfig);
+
+	//			CMP
+	CMP_Config CMPconfig;
+	CMP_GetDefaultConfig(&CMPconfig);
+	CMPconfig.hysteresisMode = CMP_HysteresisLevel3;
+	CMPconfig.enableHighSpeed = false;
+	CMPconfig.enableOutputPin = true;
+	CMP_Init(CMP_0,&CMPconfig);
+	CMP_SetInputChannels(CMP_0,CMP_IN1,CMP_IN7);
+
+	CMP_DACConfig CMP_DACconfig = {.vref = CMP_VrefSourceVin2, .dacValue= 1.65/(3.33/64)-1};
+	CMP_SetDACConfig (CMP_0, &CMP_DACconfig);
+
+	// Configure filter with 5us period, and to filter glitches of less than 5 samples (25us)
+	CMP_FilterConfig CMPFilterConfig = {.filterPeriod = 200, .filterCount = 4};
+	CMP_SetFilterConfig (CMP_0, &CMPFilterConfig);
+
+	//Input capture configuration
+	FTM_Config config4IC;
+	config4IC.clockSource = FTM_SYSTEM_CLOCK;
+	config4IC.prescale = FTM_PRESCALE_1;
+	FTM_Init(IC_FTM_INSTANCE,&config4IC);
+
+	FTM_InputCaptureConfig ICConf;
+	ICConf.channel=0;
+	ICConf.enableDMA=false;
+	ICConf.filterValue=0;
+	ICConf.mod=MOD_IC_USED;
+	ICConf.mode=FTM_RISING_EDGE;
+	ICConf.callback=MODEM_StoreCaptureTime;//set callback to process capture
+	FTM_SetupInputCapture(IC_FTM_INSTANCE, &ICConf);
+	FTM_EnableClock(IC_FTM_INSTANCE);
+
+	CMP_SetOutputDestination(CMP_OUT_FTM1_CH0);
+
+}
+
+/**
+ * @brief Modem version 2 initialization PWM generation part
+ */
+static void GenInit(void)
+{
+	// DMA configuration
+	createCnVSineTables(CnVTableL,CnVTableH);
+	DMA_Config DMAconfig;
+	DMA_GetDefaultConfig(&DMAconfig);
+	DMA_Init(&DMAconfig);
+
+	//DMA Transfer configuration
+	DMA_TransferConfig DMATransfer;
+	DMATransfer.sourceAddress = (uint32_t)CnVTableL;
+	DMATransfer.destinationAddress = FTM_GetCnVAddress(0,0);
+	DMATransfer.destinationOffset = 0;
+	DMATransfer.sourceOffset = 2;
+	DMATransfer.destinationTransferSize = DMA_TransferSize2Bytes;
+	DMATransfer.sourceTransferSize = DMA_TransferSize2Bytes;
+	DMATransfer.sourceLastAdjust=-sizeof(CnVTableL);
+	DMATransfer.destinationLastAdjust=0;
+	DMATransfer.majorLoopCounts = sizeof(CnVTableL)/sizeof(CnVTableL[0]);
+	DMATransfer.minorLoopBytes = 2;
+
+	DMA_SetTransferConfig(DMA_CHANNEL_USED,&DMATransfer);
+
+	DMA_SetCallback(DMA_CHANNEL_USED,MODEM_Modulate);
+	DMA_EnableInterrupts(DMA_CHANNEL_USED);
+	DMA_EnableChannelRequest (DMA_CHANNEL_USED);
+
+	//DMA MUX
+	DMAMUX_Init ();
+	DMAMUX_SetSource(DMA_CHANNEL_USED,DMAMUX_FTM0_CH0);
+	DMAMUX_EnableChannel(DMA_CHANNEL_USED,false);
+
+
+
+	//FTM configuration for PWM generation and DMA triggering
+
+	//Configure PORT C pin 1 to be the PWM output
+	PORT_Config portConf;
+	PORT_GetPinDefaultConfig(&portConf);
+	portConf.mux = PORT_MuxAlt4;	//Alt4 FTM0 Chnl 0
+	PORT_PinConfig(PORT_C,1,&portConf);
+
+	//Basic FTM configuration
+	FTM_Config config4PWM;
+	config4PWM.clockSource = FTM_SYSTEM_CLOCK;
+	config4PWM.prescale = FTM_PRESCALE_1;
+	FTM_Init(PWM_FTM_INSTANCE,&config4PWM);
+
+	//PWM configuration
+	FTM_PwmConfig PWMConfig;
+	PWMConfig.channel = FTM_CHNL_0;
+	PWMConfig.mode = PWM_MODE_USED;
+	PWMConfig.enableDMA=true;
+	PWMConfig.CnV =(uint16_t)((MOD4PWM)*0.5) ;
+	PWMConfig.mod=MOD4PWM;
+
+	FTM_SetupPwm(PWM_FTM_INSTANCE,&PWMConfig);
+
+
+	FTM_EnableClock(PWM_FTM_INSTANCE);
+}
+
+
+/**
+ * This function creates a table of Cnv values to be used in the generation of a sine wave
+ * according to PWM_FREC and BIT_FREC
+ * arr1 has BIT_FREC and arr2 BIT_FREC*2
+ */
+static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
+{
+#if PWM_MODE == EPWM
+	double a=0;
+	for(uint16_t i=0; i<TABLE_SIZE; i++)
+	{
+		//DUTY VALUES
+		a=(1.0+sin(2*PI*(double)i/(double)TABLE_SIZE))/2.0;
+		//CnV VALUES
+		arr1[i]=(uint16_t)((a*(MOD4PWM-2))+1+0.5);
+	}
+	for(uint16_t i=0; i<TABLE_SIZE; i++)
+	{
+		a=(1.0+sin(2*PI*(double)i*2/(double)TABLE_SIZE))/2.0;
+		arr2[i]=(uint16_t) (a*(MOD4PWM-2)+1+0.5);
+	}
+#elif PWM_MODE == CPWM
+	double a=0;
+	for(uint16_t i=0; i<HALF_TABLE_SIZE; i++)
+	{
+		//DUTY VALUES
+		a=(1.0+sin(2*PI*(double)i/(double)HALF_TABLE_SIZE))/2.0;
+		//CnV VALUES
+		arr1[2*i]=(uint16_t)((a*(MOD4PWM-2))+1+0.5);
+		arr1[(2*i)+1]=arr1[2*i];
+	}
+	for(uint16_t i=0; i<HALF_TABLE_SIZE; i++)
+	{
+		//DUTY VALUES
+		a=(1.0+sin(2*PI*(double)i*2/(double)HALF_TABLE_SIZE))/2.0;
+		//CnV VALUES
+		arr2[2*i]=(uint16_t) (a*(MOD4PWM-2)+1+0.5);
+		arr2[(2*i)+1]=arr2[2*i];
+
+	}
+#endif
+}
+
+/*
+ * Callback for Input Capture, recieves the captured value and pushes it to the buffer
+ * */
+static void MODEM_StoreCaptureTime(uint16_t captureValue)
+{
+	SET_TEST_PIN;
 	push(&inputCaptureBuffer,&captureValue);
 	FTM_ClearCount(FTM_1);
+	CLEAR_TEST_PIN;
 }
 
 
@@ -462,15 +466,20 @@ static void processCaptureTime(uint16_t captureValue)
  * or the other (high or low frequency to represent 0 or 1)
  */
 
-static void callback4DMA(void)
+static void MODEM_Modulate(void)
 {
-	if(outputBuffer.head==outputBuffer.tail)
+
+	if(isEmpty(&outputBitstream))
 		DMA_ModifySourceAddress(1,BIT2FTABLE(1));
 	else
 	{
-		DMA_ModifySourceAddress(1,outputBuffer.outcomingBits[outputBuffer.tail]);
-		outputBuffer.tail = (outputBuffer.tail + 1)%BITSTREAM_BUFFER_SIZE;
+		SET_TEST_PIN;
+		uint32_t table;
+		pop(&outputBitstream,&table);
+		DMA_ModifySourceAddress(1,table);
+		CLEAR_TEST_PIN;
 	}
+
 }
 
 #endif // MODEM_VERSION == 2
