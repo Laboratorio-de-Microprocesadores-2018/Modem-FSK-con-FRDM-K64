@@ -1,21 +1,10 @@
-/*
- * UART.c
- *
- *  Created on: 14 sep. 2018
- *      Author: sebas
- */
-/////////////////////////////////////////////////////////////////////////////////
-//                        Intertial Motion Unit (IMU)						   //
-//																			   //
-//          Grupo 3 - Laboratorio de Microprocesadores - ITBA - 2018           //
-//	                                                                           //
-/////////////////////////////////////////////////////////////////////////////////
-
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
-#include <stdint.h>
 #include "hardware.h"
+#include "Assert.h"
+#include "CPUTimeMeasurement.h"
+#include <stdint.h>
 #include "UART.h"
 #include "GPIO.h"
 

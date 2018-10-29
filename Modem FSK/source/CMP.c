@@ -1,10 +1,24 @@
-#include "hardware.h"
+/////////////////////////////////////////////////////////////////////////////////
+//                             Included header files                           //
+/////////////////////////////////////////////////////////////////////////////////
 #include "CMP.h"
+#include "hardware.h"
+#include "Assert.h"
+#include "CPUTimeMeasurement.h"
+/////////////////////////////////////////////////////////////////////////////////
+//                       Constants and macro definitions                       //
+/////////////////////////////////////////////////////////////////////////////////
 
+
+/////////////////////////////////////////////////////////////////////////////////
+//                   Local variable definitions ('static')                     //
+/////////////////////////////////////////////////////////////////////////////////
 static CMP_Type * CMPs[] = CMP_BASE_PTRS;
-
 static IRQn_Type IRQs[] = CMP_IRQS;
 
+/////////////////////////////////////////////////////////////////////////////////
+//	                        	Function definitions						   //
+/////////////////////////////////////////////////////////////////////////////////
 void CMP_GetDefaultConfig(CMP_Config * config)
 {
 	config->enableModule = true;
@@ -43,9 +57,15 @@ void CMP_Init(CMP_Instance n, CMP_Config * config)
 void CMP_SetOutputDestination(CMP_Output o)
 {
 	if(o==CMP_OUT_FTM1_CH0)
-		SIM->SOPT4 |= SIM_SOPT4_FTM1CH0SRC_MASK;
+	{
+		SIM->SOPT4 &= ~(SIM_SOPT4_FTM1CH0SRC_MASK);
+		SIM->SOPT4 |=SIM_SOPT4_FTM1CH0SRC(1);
+	}
 	else if(o==CMP_OUT_FTM2_CH0)
-		SIM->SOPT4 |= SIM_SOPT4_FTM2CH0SRC_MASK;
+	{
+		SIM->SOPT4 &= ~(SIM_SOPT4_FTM2CH0SRC_MASK);
+		SIM->SOPT4|= SIM_SOPT4_FTM2CH0SRC(1);
+	}
 
 }
 

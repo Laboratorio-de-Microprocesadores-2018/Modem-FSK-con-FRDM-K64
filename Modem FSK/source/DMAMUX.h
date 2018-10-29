@@ -1,5 +1,6 @@
 #ifndef DMAMUX_H_
 #define DMAMUX_H_
+
 #include "stdint.h"
 #include "stdbool.h"
 
@@ -70,10 +71,15 @@ typedef enum{
 	DMAMUX_AlwaysEnabled5
 } DMAMUX_Source;
 
+typedef enum
+{
+	DMAMUX_Normal,
+	DMAMUX_Periodic
+}DMAMUX_Mode;
 
 void DMAMUX_Init ();
 void DMAMUX_Deinit ();
-void DMAMUX_EnableChannel ( uint32_t channel, bool periodicTrigger);
+void DMAMUX_EnableChannel ( uint32_t channel, DMAMUX_Mode mode);
 void DMAMUX_DisableChannel (uint32_t channel);
 void DMAMUX_SetSource ( uint32_t channel, DMAMUX_Source source);
 

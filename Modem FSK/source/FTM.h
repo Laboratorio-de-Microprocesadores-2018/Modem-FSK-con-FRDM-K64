@@ -7,10 +7,21 @@
 
 #ifndef FTM_H_
 #define FTM_H_
-
+/**
+ * @file     FTM.h
+ * @brief    FTM driver to control the FTM module for PWM generation, counting
+ * and for input capture
+ */
+/////////////////////////////////////////////////////////////////////////////////
+//                             Included header files                           //
+/////////////////////////////////////////////////////////////////////////////////
 
 #include <stdbool.h>
 #include "stdint.h"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                    Enumerations, structures and typedefs                    //
+/////////////////////////////////////////////////////////////////////////////////
 // Los que tienen * son los que se pueden acceder en el header
 /*
 
@@ -41,9 +52,7 @@ PTD2  Alt4 FTM3_CH2
 PTD3  Alt4 FTM3_CH3
 
 */
-
-
-typedef void (*FTMIrqFun_t)(void);
+typedef void (*FTMCaptureFun_t)(uint16_t);
 typedef enum{FTM_0,FTM_1,FTM_2,FTM_3}FTM_Instance;
 
 typedef enum{FTM_NO_CLOCK,
@@ -68,14 +77,8 @@ typedef enum{
 }FTM_PWMMode;
 
 typedef enum{
-	FTM_CHNL_0,
-	FTM_CHNL_1,
-	FTM_CHNL_2,
-	FTM_CHNL_3,
-	FTM_CHNL_4,
-	FTM_CHNL_5,
-	FTM_CHNL_6,
-	FTM_CHNL_7
+	FTM_CHNL_0,	FTM_CHNL_1,	FTM_CHNL_2,	FTM_CHNL_3,	FTM_CHNL_4,
+	FTM_CHNL_5,	FTM_CHNL_6,	FTM_CHNL_7
 }FTM_Channel;
 
 
@@ -97,25 +100,67 @@ typedef struct{
 	FTM_PWMMode mode;
 	bool enableDMA;
 	uint16_t mod;
-	uint8_t CnV;					//agregue a partir de esto
-	//se podria agregar level para poner high true o low true pulse
+	uint8_t CnV;
+
 }FTM_PwmConfig;
 
 typedef struct {
 	FTM_Channel channel;
-	FTMIrqFun_t callback;
+	FTMCaptureFun_t callback;
 	uint16_t mod;
 	bool enableDMA;
 	FTM_InputCaptureMode mode;
-	uint32_t 	filterValue;//Only channels 0,1,2 and 3 can have filter
+	uint32_t filterValue;//Only channels 0,1,2 and 3 can have filter
 }FTM_InputCaptureConfig;
-
+/////////////////////////////////////////////////////////////////////////////////
+//                         Global function prototypes                          //
+/////////////////////////////////////////////////////////////////////////////////
+/**
+ * @brief Gives a default configuration for the FTM module
+ * @param config struct where the function will return the default configuration
+ */
 void FTM_GetDefaultConfig(FTM_Config * config);
+/**
+ * @brief Initializes FTM module
+ * @param instance to be used
+ * @param configuration struct
+ */
 void FTM_Init(FTM_Instance instance, FTM_Config * config);
+/**
+ * @brief configuration function for PWM generation
+ * @param instance FTM instance used
+ * @param config , configuration structure
+ */
 bool FTM_SetupPwm(FTM_Instance 	instance,FTM_PwmConfig * config);
-void FTM_EnableOverflowInterrupt(FTM_Instance instance);
+
+/**
+ * @brief Enables clock for the FTM instance selected
+ * @param instance
+ */
 void FTM_EnableClock(FTM_Instance instance);
+/**
+ * @brief configuration function for input capture
+ * @param instance FTM instance used
+ * @param config , configuration structure
+ */
 bool FTM_SetupInputCapture(FTM_Instance instance,FTM_InputCaptureConfig *config);
+/**
+ * @brief Gives a pointer to the address of the CnV register for the specified instance
+ * and channel.
+ * @param instance FTM instance used
+ * @param channel
+ *  */
 uint32_t FTM_GetCnVAddress(FTM_Instance 	instance,FTM_Channel channel);
 uint16_t FTM_GetModValue(FTM_Instance instance);
+/**
+ * @brief Sets to 0 the count of the selected FTM instance
+ * @param instance FTM instance used
+ *  */
+void FTM_ClearCount(FTM_Instance instance);
+
+void FTM_EnableOverflowInterrupt(FTM_Instance instance);
+
+void FTM_EnableInterrupts(FTM_Instance 	instance);
+
+void FTM_DisableInterrupts(FTM_Instance instance);
 #endif /* FTM_H_ */
