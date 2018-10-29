@@ -19,11 +19,11 @@
 #include "DMA.h"
 #include "PIT.h"
 #include "PDB.h"
-#include "CircularBuffer.h"
-#include "FloatBuffer.h"
-#include "Assert.h"
 #include "math.h"
 #include "stdlib.h"
+#include "Assert.h"
+#include "CircularBuffer.h"
+#include "FloatBuffer.h"
 #include "CPUTimeMeasurement.h"
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -56,8 +56,6 @@
 #define FRAMES_BITSTREAM_BUFFER (30)
 #define BITS_PER_FRAME (11)
 #define BITSTREAM_BUFFER_SIZE (FRAMES_BITSTREAM_BUFFER*BITS_PER_FRAME)
-#define bufferEmpty (head==tail)
-#define bufferFull	(tail+1==head)
 
 
 #define DEMOD_SAMPLE_FREQ 			(13200.0)
@@ -73,13 +71,16 @@
 #define DEMOD_FIR_ORDER				(19)
 
 
-
-
 /** Module usage definitions */
 #define DAC_DMA_CHANNEL 0
 #define DAC_TIMER PIT_CHNL_0
 #define MODULATION_TIMER PIT_CHNL_1
 
+/////////////////////////////////////////////////////////////////////////////////
+//                    Enumerations, structures and typedefs                    //
+/////////////////////////////////////////////////////////////////////////////////
+
+typedef enum{MODEM_DEM_IDLE, MODEM_DEM_READING, MODEM_DEM_ENDED_FRAME, MODEM_DEM_TRANSITION}MODEM_DemState;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   Local variable definitions ('static')                     //
@@ -91,19 +92,17 @@ static unsigned int parityTable[256] = { LOOK_UP };
 // DAC output samples
 static uint16_t signal[N_SAMPLE];
 
-static uint32_t outcomingBits[BITSTREAM_BUFFER_SIZE];
-static uint32_t head,tail;
+/** Buffer with PIT period values to modulate*/
+NEW_CIRCULAR_BUFFER(outputBitstream,BITSTREAM_BUFFER_SIZE, sizeof(uint8_t));
 
-// Buffer to store delayed samples: x(n) to x(n-delta)
-NEW_FLOAT_BUFFER(xBuffer,DEMOD_DELTA+1);
-
-// Buffer to store m(n) = x(n)*x(n-delta)
-NEW_FLOAT_BUFFER(mBuffer,DEMOD_FIR_ORDER);
-
+/** Buffer with received bytes + parity bit */
 NEW_CIRCULAR_BUFFER(transmitBuffer, 10, sizeof(uint16_t));
 
+/** Buffer to store delayed samples: x(n) to x(n-delta) */
+NEW_FLOAT_BUFFER(xBuffer,DEMOD_DELTA+1);
 
-typedef enum{MODEM_DEM_IDLE, MODEM_DEM_READING, MODEM_DEM_ENDED_FRAME, MODEM_DEM_TRANSITION}MODEM_DemState;
+/** Buffer to store m(n) = x(n)*x(n-delta) */
+NEW_FLOAT_BUFFER(mBuffer,DEMOD_FIR_ORDER);
 
 //  Fir coeffs
 static float FIR[DEMOD_FIR_ORDER] = {0.000184258321387766,	-0.00221281271600225,	-0.00875721735248610,	-0.0157935638369741,	-0.0125404257819552,
@@ -126,18 +125,17 @@ static float FIR[DEMOD_FIR_ORDER] = {0.000184258321387766,	-0.00221281271600225,
  */
 static void MODEM_modulate(void * data)
 {
-//	SET_TEST_PIN;
+	SET_TEST_PIN;
 
-	// If no data in buffer, idle state is MARK
-	if(bufferEmpty)
-		PIT_SetTimerPeriod (DAC_TIMER, MARK);
-	else
+	uint8_t bit ;
+	if(pop(&outputBitstream,&bit))
 	{
-		PIT_SetTimerPeriod (DAC_TIMER, outcomingBits[tail]);
-		tail = (tail + 1)%BITSTREAM_BUFFER_SIZE;
+		PIT_SetTimerPeriod (DAC_TIMER,bit);
 	}
+	else
+		PIT_SetTimerPeriod (DAC_TIMER, MARK);
 
-//	CLEAR_TEST_PIN;
+	CLEAR_TEST_PIN;
 }
 
 /**
@@ -267,8 +265,6 @@ void MODEM_Init(void)
 
 	// Trigger PDB to start ADC sampling (and DMA requests)
 	PDB_SoftwareTrigger();
-
-
 }
 
 /**
@@ -278,34 +274,34 @@ void MODEM_Init(void)
  */
 void MODEM_SendByte(uint8_t data)
 {
-	//SET_TEST_PIN;
+
+	uint8_t temp;
 
 	// Disable interrupts while adding data to output buffer
 	PIT_TimerIntrruptEnable(MODULATION_TIMER, false);
 
 	// Start bit
-	outcomingBits[head]=BIT2PERIOD(0);
-	head = (head + 1)%BITSTREAM_BUFFER_SIZE;
+	temp = BIT2PERIOD(0);
+	push(&outputBitstream,&temp);
 
 	// Data bits
 	for(int i=0; i<8; i++)
 	{
-		outcomingBits[head]=BIT2PERIOD( (data>>i)&(1) );
-		head = (head + 1)%BITSTREAM_BUFFER_SIZE;
+		temp = BIT2PERIOD( (data>>i)&(1) );
+		push(&outputBitstream,&temp);
 	}
 
 	// Parity bit
-	outcomingBits[head]=BIT2PERIOD(parityTable[data]);
-	head = (head + 1)%BITSTREAM_BUFFER_SIZE;
+	temp = BIT2PERIOD(parityTable[data]);
+	push(&outputBitstream,&temp);
 
 	// Stop bit
-	outcomingBits[head]=BIT2PERIOD(1);
-	head = (head + 1)%BITSTREAM_BUFFER_SIZE;
+	temp = BIT2PERIOD(1);
+	push(&outputBitstream,&temp);
 
 	// Enable interrupts
 	PIT_TimerIntrruptEnable(MODULATION_TIMER, true);
 
-	//CLEAR_TEST_PIN;
 }
 
 /**

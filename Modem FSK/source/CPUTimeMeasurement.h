@@ -2,6 +2,7 @@
 #define CPUTIMEMEASUREMENT_H_
 #include "hardware.h"
 
+
 #define MEASURE_CPU_TIME
 #ifdef MEASURE_CPU_TIME
 	#define MEASURE_CPU_TIME_PORT PORTC
