@@ -198,7 +198,7 @@ CircularBuffer * ADC_getConversionSamples(ADC_Instance n, ADC_Channel m){
 void ADC0_IRQHandler(void)
 {
 
-//	digitalToggle(PORTNUM2PIN(PC,5));
+	digitalToggle(PORTNUM2PIN(PC,5));
 
 
 	for(uint8_t n = 0; n < FSL_FEATURE_SOC_ADC16_COUNT - 1; n++)
@@ -214,6 +214,6 @@ void ADC0_IRQHandler(void)
 		}
 	}
 
-//	digitalToggle(PORTNUM2PIN(PC,5));
+	digitalToggle(PORTNUM2PIN(PC,5));
 
 }
