@@ -17,6 +17,7 @@
 //                   Local variable definitions ('static')                     //
 /////////////////////////////////////////////////////////////////////////////////
 static FTM_Type * FTMs[] = FTM_BASE_PTRS;
+static IRQn_Type IRQs[] = FTM_IRQS;
 static FTMCaptureFun_t FTM_ICCallback[FTM_CHANNELS];
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -30,8 +31,8 @@ static FTMCaptureFun_t FTM_ICCallback[FTM_CHANNELS];
  */
 void FTM_Init(FTM_Instance instance, FTM_Config * config)
 {
-
 	ASSERT(instance < FSL_FEATURE_SOC_FTM_COUNT);
+
 	//Clocking
 	switch(instance)
 	{
@@ -67,6 +68,7 @@ void FTM_Init(FTM_Instance instance, FTM_Config * config)
 bool FTM_SetupPwm(FTM_Instance 	instance, FTM_PwmConfig * config)
 {
 	ASSERT(instance < FSL_FEATURE_SOC_FTM_COUNT);
+
 
 	//						General FTM Configuration
 	if(config->enableDMA == true)
@@ -117,14 +119,18 @@ bool FTM_SetupPwm(FTM_Instance 	instance, FTM_PwmConfig * config)
 	return true;
 }
 
-void FTM_EnableInterrupts(FTM_Instance 	instance,FTM_Channel channel)
+void FTM_EnableInterrupts(FTM_Instance 	instance)
 {
-	NVIC_EnableIRQ(FTM1_IRQn);
+	ASSERT(instance < FSL_FEATURE_SOC_FTM_COUNT);
+
+	NVIC_EnableIRQ(IRQs[instance]);
 }
 
-void FTM_DisableInterrupts(FTM_Instance 	instance,FTM_Channel channel)
+void FTM_DisableInterrupts(FTM_Instance instance)
 {
-	NVIC_DisableIRQ(FTM1_IRQn);
+	ASSERT(instance < FSL_FEATURE_SOC_FTM_COUNT);
+
+	NVIC_DisableIRQ(IRQs[instance]);
 }
 /**
  * @brief Gives a pointer to the address of the CnV register for the specified instance
@@ -209,7 +215,8 @@ void FTM_ClearCount(FTM_Instance instance)
 
 
 
-/*FTM IRQ handler, calls its respective callback*/
+/*FTM IRQ handlers, calls its respective callback*/
+
 void FTM1_IRQHandler(void)
 {
 	SET_TEST_PIN;
@@ -219,4 +226,3 @@ void FTM1_IRQHandler(void)
 
 	CLEAR_TEST_PIN;
 }
-
