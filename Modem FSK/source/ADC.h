@@ -2,6 +2,7 @@
 #define ADC_H_
 
 #include "stdint.h"
+#include "CircularBuffer.h"
 
 
 #define ADC_BIT_RESOLUTION 	(10)
@@ -103,10 +104,16 @@ void ADC_GetDefaultChannelConfig(ADC_ChannelConfig * config);
 
 void ADC_SetChannelConfig(ADC_Instance n,ADC_Channel m,ADC_ChannelConfig * config);
 
+
+
 /**
  * @brief Return conversion value
  */
 uint16_t ADC_GetConversionResult(ADC_Instance n,ADC_Channel m);
+/**
+ * @brief Return conversion values
+ */
+CircularBuffer * ADC_getConversionSamples(ADC_Instance n, ADC_Channel m);
 
 uint32_t ADC_GetDataResultAddress(ADC_Instance n,ADC_Channel m);
 

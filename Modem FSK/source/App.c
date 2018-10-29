@@ -13,11 +13,9 @@
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-#include "Modem2.h"
+#include "CPUTimeMeasurement.h"
+#include "Modem.h"
 #include "UART.h"
-
-
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
@@ -49,18 +47,25 @@
 
 void App_Init (void)
 {
-	MODEM2_Init();
+
+#ifdef MEASURE_CPU_TIME
+	MEASURE_CPU_TIME_PORT->PCR[MEASURE_CPU_TIME_PIN] = PORT_PCR_MUX(1);
+	MEASURE_CPU_TIME_GPIO->PDDR |= (1<<MEASURE_CPU_TIME_PIN);
+	MEASURE_CPU_TIME_GPIO->PDOR &= ~(1<<MEASURE_CPU_TIME_PIN);
+#endif
 
 
 	UART_Config UARTconfig;
 	UARTconfig.baud = UART_Baud_1200_Bps;
 	UARTconfig.enableRx = true;
 	UARTconfig.enableTx = true;
-	UARTconfig.parityMode = UART_ParityOdd;//UART_ParityOdd;// UART_ParityDisabled;
+	UARTconfig.parityMode = UART_ParityOdd;
 	UARTconfig.RxFIFOEnable = true;
 	UARTconfig.TxFIFOEnable = true;
 	UARTconfig.loopBackEnable = false;
 	UART_Init(&UARTconfig);
+
+	MODEM_Init();
 
 
 }
@@ -69,21 +74,15 @@ void App_Init (void)
 void App_Run (void)
 {
 
-/*
-	static uint64_t time;
-	if((millis()-time)>=1000)
-	{
-		time = millis();
-		MODEM2_SendData('A');
-	}
-*/
 
 	static uint8_t b;
 
-	if(UART_ReceiveByte(&b))
-		MODEM2_SendData(b);
+	MODEM_Demodulate();
 
-	if(MODEM2_ReceiveByte(&b))
+	if(UART_ReceiveByte(&b))
+		MODEM_SendByte(b);
+
+	if(MODEM_ReceiveByte(&b))
 		UART_SendByte(b);
 
 }

@@ -17,8 +17,16 @@
 
 void assertFailed(char *file, int line,char*expr);
 
-#define ASSERT(expr) \
-		 if (expr){} \
-		 else assertFailed(__FILE__, __LINE__,#expr)
+#define ENABLE_ASSERT 1
 
-#endif
+
+#if ENABLE_ASSERT == 1
+	#define ASSERT(expr) \
+			 if (expr){} \
+			 else assertFailed(__FILE__, __LINE__,#expr)
+#else
+	#define ASSERT(expr)
+#endif // ENABLE_ASSERT
+
+
+#endif //  ASSERT_H_

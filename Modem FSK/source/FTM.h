@@ -160,7 +160,7 @@ void FTM_ClearCount(FTM_Instance instance);
 
 void FTM_EnableOverflowInterrupt(FTM_Instance instance);
 
-void FTM_EnableInterrupts(FTM_Instance 	instance,FTM_Channel channel);
+void FTM_EnableInterrupts(FTM_Instance 	instance);
 
-void FTM_DisableInterrupts(FTM_Instance 	instance,FTM_Channel channel);
+void FTM_DisableInterrupts(FTM_Instance instance);
 #endif /* FTM_H_ */

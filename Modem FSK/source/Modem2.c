@@ -1,6 +1,13 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
+#include "Modem.h"
+
+#if MODEM_VERSION == 2
+
+#pragma message ("Using version 2 of the modem")
+
+
 #include "Assert.h"
 #include "math.h"
 #include "DMAMUX.h"
@@ -9,11 +16,11 @@
 #include "CMP.h"
 #include "FTM.h"
 #include "CircularBuffer.h"
+
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-typedef enum{IDLE,START,DATA,STOP}ParsingStatus;
 
 
 // Generating the look-up table while pre-processing
@@ -77,8 +84,8 @@ static uint16_t CnVTableL[TABLE_SIZE];
 static uint16_t CnVTableH[TABLE_SIZE];
 
 typedef struct{
-	uint32_t outcomingBits[OUTCOMING_BUFF_SIZE];
-	uint8_t head,tail;
+	uint8_t outcomingBits[OUTCOMING_BUFF_SIZE];
+	uint32_t head,tail;
 }CircBuff;
 static CircBuff outputBuffer;
 
@@ -100,7 +107,7 @@ static void DecInit(void);
 /**
  * @brief Modem version 2 initialization
  */
-void MODEM2_Init(void)
+void MODEM_Init(void)
 {
 	GenInit();
 	//DecInit();
@@ -227,7 +234,7 @@ static void GenInit(void)
  * @brief Modem version 2  function to send a byte
  * @param data byte to be sent
  */
-void MODEM2_SendData(uint8_t data)
+void MODEM_SendByte(uint8_t data)
 {
 
 	DMA_DisableInterrupts(1);
@@ -262,29 +269,25 @@ void MODEM2_SendData(uint8_t data)
  * @param byte to be sent
  * @return true when there is new data, false if no data has arrived
  */
-bool MODEM2_ReceiveByte(uint8_t * byte)
+bool MODEM_ReceiveByte(uint8_t * byte)
 {
-	FTM_DisableInterrupts(FTM_1,0);
-	//uint8_t a;
 	uint16_t d=0;
-	if(pop(&receivedBytes,&d))
+
+	FTM_DisableInterrupts(FTM_1);
+	bool b = pop(&receivedBytes,&d);
+	FTM_EnableInterrupts(FTM_1);
+
+	if(b)
 	{
-		/*a=((uint8_t)(d&0xFF));
-		if(a==177 || a==178 || a==179)
-			ASSERT(0);*/
 		(*byte) = (uint8_t)(d&0xFF);
 
-		//if(((d>>9)&1) != parityTable[(*byte)])
-		//	return false;
-		//else
-			FTM_EnableInterrupts(FTM_1,0);
+		if(((d>>8)&1) == parityTable[(*byte)])
 			return true;
+		else
+			return false;
 	}
 	else
-	{
-		FTM_EnableInterrupts(FTM_1,0);
 		return false;
-	}
 }
 
 
@@ -340,11 +343,16 @@ static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
 }
 #endif
 
+void MODEM_Demodulate()
+{
+
+}
 /*
  * Callback for Input Capture, recieves the captured value and pushes bytes to the buffer
  * */
 static void processCaptureTime(uint16_t captureValue)
 {
+	typedef enum{IDLE,START,DATA,STOP}ParsingStatus;
 
 	FTM_ClearCount(FTM_1);
 
@@ -438,3 +446,4 @@ static void callback4DMA(void)
 
 }
 
+#endif // MODEM_VERSION == 2
