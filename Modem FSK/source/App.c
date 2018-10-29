@@ -71,10 +71,18 @@ void App_Run (void)
 	MODEM_Demodulate();
 
 	if(UART_ReceiveByte(&b))
+	{
+		SET_TEST_PIN;
 		MODEM_SendByte(b);
+		CLEAR_TEST_PIN;
+	}
 
 	if(MODEM_ReceiveByte(&b))
+	{
+		SET_TEST_PIN;
 		UART_SendByte(b);
+		CLEAR_TEST_PIN;
+	}
 }
 
 
