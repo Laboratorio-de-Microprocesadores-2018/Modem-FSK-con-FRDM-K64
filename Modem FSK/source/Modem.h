@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MODEM_VERSION 2
+#define MODEM_VERSION 1
 
 #ifndef MODEM_VERSION
 #error "Modem version undefined!"
@@ -48,7 +48,7 @@ bool MODEM_ReceiveByte(uint8_t * byte);
 /**
  * @brief Process input data. Must call this function periodically
  */
-void MODEM_Demodulate();
+void MODEM_Demodulate(void);
 
 
 #endif //MODEM

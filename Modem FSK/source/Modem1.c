@@ -119,9 +119,14 @@ static float FIR[DEMOD_FIR_ORDER] = {0.000184258321387766,	-0.00221281271600225,
 /////////////////////////////////////////////////////////////////////////////////
 
 
+/**
+ * @brief A simple stub function to show how links do work.
+ *
+ * @param param1 Description of the first parameter of the function.
+ */
 static void MODEM_modulate(void * data)
 {
-	SET_TEST_PIN;
+//	SET_TEST_PIN;
 
 	// If no data in buffer, idle state is MARK
 	if(bufferEmpty)
@@ -132,10 +137,14 @@ static void MODEM_modulate(void * data)
 		tail = (tail + 1)%BITSTREAM_BUFFER_SIZE;
 	}
 
-	CLEAR_TEST_PIN;
+//	CLEAR_TEST_PIN;
 }
 
-
+/**
+ * @brief Initialization of the MODEM. Enables all the neccesary modulates and starts them in order to start recieving info.
+ *
+ * The modules that are used in this case are: DMA, DMAMUX, ADC, DAC, PDB and PIT
+ */
 void MODEM_Init(void)
 {
 	// Fill table with samples
@@ -262,8 +271,11 @@ void MODEM_Init(void)
 
 }
 
-
-
+/**
+ * @brief Loads the output buffer, given something is recieved through the UART module.
+ *
+ * @param data the byte recieved through the UART module.
+ */
 void MODEM_SendByte(uint8_t data)
 {
 	//SET_TEST_PIN;
@@ -296,6 +308,12 @@ void MODEM_SendByte(uint8_t data)
 	//CLEAR_TEST_PIN;
 }
 
+/**
+ * @brief If there is something to transmit, it loads the demodulated info in the "byte" param in order to send it through UART.
+ * It checks parity recieved against parity calculated. If they are different it returns false. If there is nothing to send it returns false.
+ *
+ * @param byte pointer to the byte where the info to transmit will be copied.
+ */
 bool MODEM_ReceiveByte(uint8_t * byte)
 {
 	uint16_t b;
@@ -315,8 +333,17 @@ bool MODEM_ReceiveByte(uint8_t * byte)
 
 }
 
-void MODEM_Demodulate()
+/**
+ * @brief Demodulation function. It is called in App_Run(). So it checks if the ADC has converted a new sample, if so, it process the given
+ * sample through the delay block, the FIR filter and finally the comparator. Finally it runs the sample through the "State machine" and
+ * eventually loads a new info byte to the transmissioBuffer in order to send it through UART
+ *
+ * @param byte pointer to the byte where the info to transmit will be copied.
+ */
+void MODEM_Demodulate(void)
 {
+	SET_TEST_PIN;
+
 	static MODEM_DemState demodulationState;
 	static uint8_t demodulationSampleCount, demodulationTxBitNum;
 	static uint16_t demodulationTxByte;
@@ -413,6 +440,8 @@ void MODEM_Demodulate()
 
 		}
 	}
+	CLEAR_TEST_PIN;
 
 }
+
 #endif // MODEM_VERSION==1
