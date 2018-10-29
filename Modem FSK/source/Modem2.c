@@ -6,7 +6,7 @@
 #if MODEM_VERSION == 2
 
 #pragma message ("Using version 2 of the modem")
-
+#include "hardware.h" // SACARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
 #include "DMA.h"
 #include "DMAMUX.h"
 #include "FTM.h"
@@ -73,7 +73,7 @@
 #define DMA_CHANNEL_USED 1
 #define PWM_FREC 98400
 #define PWM_FTM_INSTANCE FTM_0
-
+#define IC_FTM_INSTANCE FTM_1
 typedef struct{
 	uint32_t outcomingBits[BITSTREAM_BUFFER_SIZE];
 	uint32_t head,tail;
@@ -115,7 +115,7 @@ static void DecInit(void);
 void MODEM_Init(void)
 {
 	GenInit();
-	DecInit();
+	//DecInit();
 }
 
 /**
@@ -153,7 +153,7 @@ static void DecInit(void)
 	FTM_Config config4IC;
 	config4IC.clockSource = FTM_SYSTEM_CLOCK;
 	config4IC.prescale = FTM_PRESCALE_1;
-	FTM_Init(FTM_1,&config4IC);
+	FTM_Init(IC_FTM_INSTANCE,&config4IC);
 
 	FTM_InputCaptureConfig ICConf;
 	ICConf.channel=0;
@@ -162,8 +162,8 @@ static void DecInit(void)
 	ICConf.mod=MOD_IC_USED;
 	ICConf.mode=FTM_RISING_EDGE;
 	ICConf.callback=processCaptureTime;//set callback to process capture
-	FTM_SetupInputCapture(FTM_1, &ICConf);
-	FTM_EnableClock(FTM_1);
+	FTM_SetupInputCapture(IC_FTM_INSTANCE, &ICConf);
+	FTM_EnableClock(IC_FTM_INSTANCE);
 
 	CMP_SetOutputDestination(CMP_OUT_FTM1_CH0);
 
@@ -243,8 +243,8 @@ void MODEM_SendByte(uint8_t data)
 {
 	SET_TEST_PIN;
 
-	DMA_DisableInterrupts(1);
-
+	//DMA_DisableInterrupts(1);
+	NVIC_DisableIRQ(DMA1_IRQn);
 	//Start bit
 	outputBuffer.outcomingBits[outputBuffer.head]= BIT2FTABLE(0);
 	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
@@ -265,7 +265,7 @@ void MODEM_SendByte(uint8_t data)
 	outputBuffer.head = (outputBuffer.head + 1)%BITSTREAM_BUFFER_SIZE;
 
 	// Enable interrupts
-	DMA_EnableInterrupts(1);
+	NVIC_EnableIRQ(DMA1_IRQn);
 
 	CLEAR_TEST_PIN;
 }
@@ -277,23 +277,29 @@ void MODEM_SendByte(uint8_t data)
  */
 bool MODEM_ReceiveByte(uint8_t * byte)
 {
+	SET_TEST_PIN;
+	bool retVal;
 	uint16_t d=0;
 
-	FTM_DisableInterrupts(FTM_1);
+	FTM_DisableInterrupts(IC_FTM_INSTANCE);
 	bool b = pop(&receivedBytes,&d);
-	FTM_EnableInterrupts(FTM_1);
+	FTM_EnableInterrupts(IC_FTM_INSTANCE);
 
 	if(b)
 	{
 		(*byte) = (uint8_t)(d&0xFF);
 
 		if(((d>>8)&1) == parityTable[(*byte)])
-			return true;
+			retVal = true;
 		else
-			return false;
+			retVal = false;
 	}
 	else
-		return false;
+		retVal = false;
+
+	CLEAR_TEST_PIN;
+
+	return retVal;
 }
 
 
@@ -442,14 +448,12 @@ static void processCaptureTime(uint16_t captureValue)
 static void callback4DMA(void)
 {
 	if(outputBuffer.head==outputBuffer.tail)
-
 		DMA_ModifySourceAddress(1,BIT2FTABLE(1));
 	else
 	{
 		DMA_ModifySourceAddress(1,outputBuffer.outcomingBits[outputBuffer.tail]);
 		outputBuffer.tail = (outputBuffer.tail + 1)%BITSTREAM_BUFFER_SIZE;
 	}
-
 }
 
 #endif // MODEM_VERSION == 2

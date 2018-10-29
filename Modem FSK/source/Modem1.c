@@ -326,7 +326,10 @@ void MODEM_Demodulate()
 	CircularBuffer * ADC_samples = ADC_getConversionSamples(ADC_0,ADC_ChannelA);
 	while(!isEmpty(ADC_samples))
 	{
+		ADC_DisableInterrupts(ADC_0,ADC_ChannelA);
 		pop(ADC_samples, &xn);
+		ADC_EnableInterrupts(ADC_0,ADC_ChannelA);
+
 		// Get value from ADC x(n)
 		PUSH(xBuffer,xn);
 
