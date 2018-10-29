@@ -1,6 +1,13 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             Included header files                           //
 /////////////////////////////////////////////////////////////////////////////////
+#include "Modem.h"
+
+#if MODEM_VERSION == 2
+
+#pragma message ("Using version 2 of the modem")
+
+
 #include "Assert.h"
 #include "math.h"
 #include "DMAMUX.h"
@@ -9,11 +16,11 @@
 #include "CMP.h"
 #include "FTM.h"
 #include "CircularBuffer.h"
+
 /////////////////////////////////////////////////////////////////////////////////
 //                       Constants and macro definitions                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-typedef enum{IDLE,START,DATA,STOP}ParsingStatus;
 
 
 // Generating the look-up table while pre-processing
@@ -100,7 +107,7 @@ static void DecInit(void);
 /**
  * @brief Modem version 2 initialization
  */
-void MODEM2_Init(void)
+void MODEM_Init(void)
 {
 	GenInit();
 	DecInit();
@@ -227,7 +234,7 @@ static void GenInit(void)
  * @brief Modem version 2  function to send a byte
  * @param data byte to be sent
  */
-void MODEM2_SendData(uint8_t data)
+void MODEM_SendByte(uint8_t data)
 {
 
 	DMA_DisableInterrupts(1);
@@ -262,7 +269,7 @@ void MODEM2_SendData(uint8_t data)
  * @param byte to be sent
  * @return true when there is new data, false if no data has arrived
  */
-bool MODEM2_ReceiveByte(uint8_t * byte)
+bool MODEM_ReceiveByte(uint8_t * byte)
 {
 	FTM_DisableInterrupts(FTM_1,0);
 	//uint8_t a;
@@ -340,11 +347,16 @@ static void createCnVSineTables(uint16_t *arr1,uint16_t *arr2)
 }
 #endif
 
+void MODEM_Demodulate()
+{
+
+}
 /*
  * Callback for Input Capture, recieves the captured value and pushes bytes to the buffer
  * */
 static void processCaptureTime(uint16_t captureValue)
 {
+	typedef enum{IDLE,START,DATA,STOP}ParsingStatus;
 
 	FTM_ClearCount(FTM_1);
 
@@ -438,3 +450,4 @@ static void callback4DMA(void)
 
 }
 
+#endif // MODEM_VERSION == 2
