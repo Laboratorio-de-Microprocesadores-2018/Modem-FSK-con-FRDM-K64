@@ -93,6 +93,9 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 
 	DMA0->CR|=DMA_CR_HOE_MASK;
 
+	// Enable major interrupts
+	DMA0->TCD[channel].CSR|=DMA_CSR_INTMAJOR_MASK;
+
 }
 /**
  * @brief enables interrupts in a desired channel
@@ -101,9 +104,10 @@ void DMA_SetTransferConfig	(uint32_t channel,DMA_TransferConfig * 	config)
 void DMA_EnableInterrupts (uint32_t channel)
 {
 	ASSERT(channel<FSL_FEATURE_EDMA_MODULE_CHANNEL);
-	DMA0->TCD[channel].CSR|=DMA_CSR_INTMAJOR_MASK;
 	NVIC_EnableIRQ(irqTable[channel]);
 }
+
+
 /**
  * @brief disables interrupts in a desired channel
  * @param channel
@@ -111,7 +115,6 @@ void DMA_EnableInterrupts (uint32_t channel)
 void DMA_DisableInterrupts (uint32_t channel)
 {
 	ASSERT(channel<FSL_FEATURE_EDMA_MODULE_CHANNEL);
-	DMA0->TCD[channel].CSR&=~DMA_CSR_INTMAJOR_MASK;
 	NVIC_DisableIRQ(irqTable[channel]);
 }
 /**
