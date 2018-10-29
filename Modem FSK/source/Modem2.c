@@ -271,27 +271,23 @@ void MODEM_SendByte(uint8_t data)
  */
 bool MODEM_ReceiveByte(uint8_t * byte)
 {
-	FTM_DisableInterrupts(FTM_1,0);
-	//uint8_t a;
 	uint16_t d=0;
-	if(pop(&receivedBytes,&d))
+
+	FTM_DisableInterrupts(FTM_1);
+	bool b = pop(&receivedBytes,&d);
+	FTM_EnableInterrupts(FTM_1);
+
+	if(b)
 	{
-		/*a=((uint8_t)(d&0xFF));
-		if(a==177 || a==178 || a==179)
-			ASSERT(0);*/
 		(*byte) = (uint8_t)(d&0xFF);
 
-		//if(((d>>9)&1) != parityTable[(*byte)])
-		//	return false;
-		//else
-			FTM_EnableInterrupts(FTM_1,0);
+		if(((d>>8)&1) == parityTable[(*byte)])
 			return true;
+		else
+			return false;
 	}
 	else
-	{
-		FTM_EnableInterrupts(FTM_1,0);
 		return false;
-	}
 }
 
 
